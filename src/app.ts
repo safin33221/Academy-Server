@@ -1,20 +1,49 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Application, Request, Response } from "express";
 
-const app: Express = express();
-const port = process.env.PORT || 5000;
+const app: Application = express();
 
-// Middleware
-app.use(express.json());
+/* =======================
+   Global Middlewares
+======================= */
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.get('/', (req: Request, res: Response) => {
-    res.status(200).send('Hello World!');
+/* =======================
+   Health Check
+======================= */
+app.get("/", (_req: Request, res: Response) => {
+    res.status(200).json({
+        success: true,
+        message: "LMS API is running",
+        timestamp: new Date().toISOString(),
+    });
 });
 
-// Start server
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+/* =======================
+   404 Handler
+======================= */
+app.use((_req: Request, res: Response) => {
+    res.status(404).json({
+        success: false,
+        message: "Route not found",
+    });
+});
+
+/* =======================
+   Global Error Handler
+======================= */
+app.use((
+    err: Error,
+    _req: Request,
+    res: Response,
+    _next: Function
+) => {
+    console.error("❌ Error:", err);
+
+    res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+    });
 });
 
 export default app;
