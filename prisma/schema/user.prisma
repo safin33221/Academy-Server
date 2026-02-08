@@ -1,0 +1,22 @@
+model User {
+    id String @id @default(uuid())
+
+    // Identity
+    firstName String
+    lastName  String
+    email     String @unique
+    password  String
+
+    // Authorization
+    role UserRole @default(STUDENT)
+
+    // Account Status
+    isVerified Boolean @default(false)
+    isActive   Boolean @default(true)
+    isDeleted  Boolean @default(false)
+
+    // Audit
+    lastLoginAt DateTime?
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+}
