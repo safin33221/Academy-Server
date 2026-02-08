@@ -46,8 +46,12 @@ const env = {
     DATABASE_URL: required("DATABASE_URL"),
 
     /* Security */
-    JWT_SECRET: required("JWT_SECRET"),
-    JWT_EXPIRES_IN: optional("JWT_EXPIRES_IN") || "7d",
+    JWT_ACCESS_SECRET: required("JWT_ACCESS_SECRET"),
+    JWT_REFRESH_SECRET: required("JWT_REFRESH_SECRET"),
+
+    JWT_ACCESS_EXPIRES_IN: optional("JWT_ACCESS_EXPIRES_IN") || "7d",
+    JWT_REFRESH_EXPIRES_IN: optional("JWT_REFRESH_EXPIRES_IN") || "90d",
+
     BCRYPT_SALT_ROUNDS: toNumber("BCRYPT_SALT_ROUNDS", 10),
 
     /* CORS */
@@ -61,6 +65,12 @@ const env = {
         PASS: optional("SMTP_PASS"),
         FROM_NAME: optional("SMTP_FROM_NAME"),
         FROM_EMAIL: optional("SMTP_FROM_EMAIL"),
+    },
+    REDIS: {
+        REDIS_HOST: required("REDIS_HOST"),
+        REDIS_PORT: required("REDIS_PORT"),
+        REDIS_PASSWORD: required("REDIS_PASSWORD"),
+        REDIS_USERNAME: required("REDIS_USERNAME")
     },
 
     /* File Upload */
