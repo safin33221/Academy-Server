@@ -1,16 +1,38 @@
-import express from 'express';
+import express from "express";
+import globalErrorHandler from "./app/middleware/globalErrorHandler.js";
+import notFound from "./app/middleware/notFound.js";
 const app = express();
-const port = process.env.PORT || 5000;
-// Middleware
-app.use(express.json());
+/* =======================
+   Global Middlewares
+======================= */
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
-// Routes
-app.get('/', (req, res) => {
-    res.status(200).send('Hello World!');
+/* =======================
+   Health Check
+======================= */
+app.get("/", (_req, res) => {
+    res.status(200).json({
+        success: true,
+        message: "LMS API is running",
+        timestamp: new Date().toISOString(),
+    });
 });
-// Start server
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+/* =======================
+   404 Handler
+======================= */
+app.use((_req, res) => {
+    res.status(404).json({
+        success: false,
+        message: "Route not found",
+    });
 });
+/* =======================
+   Global Error Handler
+======================= */
+app.use(globalErrorHandler);
+/* =======================
+  Not found
+======================= */
+app.use(notFound);
 export default app;
 //# sourceMappingURL=app.js.map

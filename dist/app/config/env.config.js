@@ -1,0 +1,64 @@
+import dotenv from "dotenv";
+import path from "path";
+/* =======================
+   Load .env
+======================= */
+dotenv.config({
+    path: path.join(process.cwd(), ".env"),
+});
+/* =======================
+   Helpers
+======================= */
+const required = (key) => {
+    const value = process.env[key];
+    if (!value) {
+        throw new Error(`❌ Missing required env variable: ${key}`);
+    }
+    return value;
+};
+const optional = (key) => {
+    return process.env[key];
+};
+const toNumber = (key, fallback) => {
+    const value = process.env[key];
+    if (!value && fallback !== undefined)
+        return fallback;
+    const num = Number(value);
+    if (isNaN(num)) {
+        throw new Error(`❌ Env variable ${key} must be a number`);
+    }
+    return num;
+};
+/* =======================
+   Environment Config
+======================= */
+const env = {
+    /* App */
+    NODE_ENV: optional("NODE_ENV") || "development",
+    PORT: toNumber("PORT", 5000),
+    /* Database */
+    DATABASE_URL: required("DATABASE_URL"),
+    /* Security */
+    JWT_SECRET: required("JWT_SECRET"),
+    JWT_EXPIRES_IN: optional("JWT_EXPIRES_IN") || "7d",
+    BCRYPT_SALT_ROUNDS: toNumber("BCRYPT_SALT_ROUNDS", 10),
+    /* CORS */
+    CORS_ORIGIN: optional("CORS_ORIGIN") || "*",
+    /* SMTP */
+    SMTP: {
+        HOST: optional("SMTP_HOST"),
+        PORT: toNumber("SMTP_PORT", 587),
+        USER: optional("SMTP_USER"),
+        PASS: optional("SMTP_PASS"),
+        FROM_NAME: optional("SMTP_FROM_NAME"),
+        FROM_EMAIL: optional("SMTP_FROM_EMAIL"),
+    },
+    /* File Upload */
+    UPLOAD_DIR: optional("UPLOAD_DIR") || "uploads",
+    MAX_FILE_SIZE: toNumber("MAX_FILE_SIZE", 10 * 1024 * 1024),
+    /* Rate Limiting */
+    RATE_LIMIT_WINDOW_MS: toNumber("RATE_LIMIT_WINDOW_MS", 15 * 60 * 1000),
+    RATE_LIMIT_MAX: toNumber("RATE_LIMIT_MAX", 100),
+};
+export default env;
+//# sourceMappingURL=env.config.js.map
