@@ -1,4 +1,6 @@
 import express, { Application, Request, Response } from "express";
+import globalErrorHandler from "./app/middleware/globalErrorHandler.js";
+import notFound from "./app/middleware/notFound.js";
 
 const app: Application = express();
 
@@ -32,19 +34,13 @@ app.use((_req: Request, res: Response) => {
 /* =======================
    Global Error Handler
 ======================= */
-app.use((
-    err: Error,
-    _req: Request,
-    res: Response,
-    _next: Function
-) => {
-    console.error("❌ Error:", err);
+app.use(globalErrorHandler);
 
-    res.status(500).json({
-        success: false,
-        message: "Internal Server Error",
-    });
-});
+
+/* =======================
+  Not found 
+======================= */
+app.use(notFound);
 
 export default app;
 
