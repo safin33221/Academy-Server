@@ -1,8 +1,8 @@
 import app from "./app.js";
+import env from "./app/config/env.config.js";
 import prisma from "./lib/prisma.js";
-
-const PORT = Number(process.env.PORT) || 5000;
-const NODE_ENV = process.env.NODE_ENV || "development";
+const PORT = Number(env.PORT) || 5000;
+const NODE_ENV = env.NODE_ENV || "development";
 
 async function startServer() {
     try {
