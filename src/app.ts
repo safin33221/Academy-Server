@@ -1,6 +1,7 @@
 import express, { Application, Request, Response } from "express";
 import globalErrorHandler from "./app/middleware/globalErrorHandler.js";
 import notFound from "./app/middleware/notFound.js";
+import router from "./app/routes/index.js";
 
 const app: Application = express();
 
@@ -10,6 +11,10 @@ const app: Application = express();
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+
+
+
+app.use('/api/v1', router)
 /* =======================
    Health Check
 ======================= */

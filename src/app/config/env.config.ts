@@ -46,8 +46,12 @@ const env = {
     DATABASE_URL: required("DATABASE_URL"),
 
     /* Security */
-    JWT_SECRET: required("JWT_SECRET"),
-    JWT_EXPIRES_IN: optional("JWT_EXPIRES_IN") || "7d",
+    JWT_ACCESS_SECRET: required("JWT_ACCESS_SECRET"),
+    JWT_REFRESH_SECRET: required("JWT_REFRESH_SECRET"),
+
+    JWT_ACCESS_EXPIRES_IN: optional("JWT_ACCESS_EXPIRES_IN") || "7d",
+    JWT_REFRESH_EXPIRES_IN: optional("JWT_REFRESH_EXPIRES_IN") || "90d",
+
     BCRYPT_SALT_ROUNDS: toNumber("BCRYPT_SALT_ROUNDS", 10),
 
     /* CORS */
