@@ -1,5 +1,6 @@
 import express, { Router } from 'express';
 import { AuthRoutes } from '../module/auth/auth.route.js';
+import { OtpRoute } from '../module/otp/otp.route.js';
 
 
 
@@ -10,6 +11,10 @@ const moduleRoutes = [
     {
         path: '/auth',
         route: AuthRoutes
+    },
+    {
+        path: '/otp',
+        route: OtpRoute
     },
 
 ]

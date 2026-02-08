@@ -66,6 +66,12 @@ const env = {
         FROM_NAME: optional("SMTP_FROM_NAME"),
         FROM_EMAIL: optional("SMTP_FROM_EMAIL"),
     },
+    REDIS: {
+        REDIS_HOST: required("REDIS_HOST"),
+        REDIS_PORT: required("REDIS_PORT"),
+        REDIS_PASSWORD: required("REDIS_PASSWORD"),
+        REDIS_USERNAME: required("REDIS_USERNAME")
+    },
 
     /* File Upload */
     UPLOAD_DIR: optional("UPLOAD_DIR") || "uploads",
