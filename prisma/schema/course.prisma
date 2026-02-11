@@ -1,0 +1,91 @@
+enum CourseType {
+    ONLINE
+    OFFLINE
+    HYBRID
+}
+
+enum CourseAccess {
+    FREE
+    PAID
+}
+
+enum CourseLevel {
+    BEGINNER
+    INTERMEDIATE
+    ADVANCED
+}
+
+enum CourseStatus {
+    DRAFT
+    REVIEW
+    PUBLISHED
+    ARCHIVED
+}
+
+enum EnrollmentStatus {
+    OPEN
+    CLOSED
+    UPCOMING
+}
+
+model Course {
+    id          String @id @default(uuid())
+    title       String
+    slug        String @unique
+    description String
+    thumbnail   String
+
+    // Classification
+    type   CourseType
+    access CourseAccess
+    level  CourseLevel
+    status CourseStatus @default(DRAFT)
+
+    // Pricing
+    price         Float   @default(0)
+    discountPrice Float?
+    isPremium     Boolean @default(false)
+
+    // Enrollment Window
+    enrollmentStart  DateTime?
+    enrollmentEnd    DateTime?
+    enrollmentStatus EnrollmentStatus @default(UPCOMING)
+
+    // Course Duration
+    startDate       DateTime?
+    endDate         DateTime?
+    durationInWeeks Int?
+
+    // Capacity
+    maxStudents Int?
+    seatsFilled Int  @default(0)
+
+    // Location (for offline/hybrid)
+    location String?
+
+    // Certificate
+    certificateEnabled Boolean @default(false)
+
+    // SEO
+    metaTitle       String?
+    metaDescription String?
+
+    // Admin Control
+    approved  Boolean @default(false)
+    isDeleted Boolean @default(false)
+
+    // Relations
+    instructorId String?
+    modules      Module[]
+    batches      Batch[]
+    coupons      Coupon[]
+    enrollments  Enrollment[]
+    reviews      Review[]
+
+    // Analytics
+    averageRating Float @default(0)
+    totalReviews  Int   @default(0)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+}

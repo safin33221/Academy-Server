@@ -1,0 +1,11 @@
+model Batch {
+    id        String   @id @default(uuid())
+    courseId  String
+    name      String
+    startDate DateTime
+    endDate   DateTime
+    capacity  Int
+
+    course   Course       @relation(fields: [courseId], references: [id])
+    students Enrollment[]
+}

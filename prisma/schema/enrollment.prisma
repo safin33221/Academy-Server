@@ -1,0 +1,17 @@
+model Enrollment {
+    id       String  @id @default(uuid())
+    userId   String
+    courseId String
+    batchId  String?
+
+    paidAmount Float
+    status     String // PAID | FREE | PREMIUM
+
+    user   User   @relation(fields: [userId], references: [id])
+    course Course @relation(fields: [courseId], references: [id])
+
+    createdAt DateTime @default(now())
+    batch     Batch?   @relation(fields: [batchId], references: [id])
+
+    @@unique([userId, courseId])
+}
