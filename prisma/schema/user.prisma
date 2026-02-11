@@ -52,7 +52,7 @@ model Instructor {
 
     socialLinks Json?
 
-    courses Course[]
+    // courses Course[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt

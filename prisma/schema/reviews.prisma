@@ -1,0 +1,12 @@
+model Review {
+    id      String  @id @default(uuid())
+    rating  Int
+    comment String?
+
+    userId   String
+    courseId String
+
+    course Course @relation(fields: [courseId], references: [id])
+
+    createdAt DateTime @default(now())
+}
