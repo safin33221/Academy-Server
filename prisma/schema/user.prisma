@@ -5,7 +5,8 @@ model User {
     firstName String
     lastName  String
     email     String @unique
-    password  String
+
+    password String
 
     // Authorization
     role UserRole @default(STUDENT)
@@ -15,8 +16,44 @@ model User {
     isActive   Boolean @default(true)
     isDeleted  Boolean @default(false)
 
+    isBlocked   Boolean      @default(false)
+    isPremium   Boolean      @default(false)
     // Audit
     lastLoginAt DateTime?
-    createdAt   DateTime  @default(now())
-    updatedAt   DateTime  @updatedAt
+    createdAt   DateTime     @default(now())
+    updatedAt   DateTime     @updatedAt
+    enrollments Enrollment[]
+    instructor  Instructor?
+}
+
+model Instructor {
+    id String @id @default(uuid())
+
+    userId String @unique
+    user   User   @relation(fields: [userId], references: [id])
+
+    bio         String?
+    designation String?
+    experience  Int // years
+    expertise   String[] // ["Graphic Design", "UI/UX"]
+
+    profileImage String?
+    coverImage   String?
+
+    status     InstructorStatus @default(PENDING)
+    isVerified Boolean          @default(false)
+
+    totalStudents Int   @default(0)
+    totalCourses  Int   @default(0)
+    rating        Float @default(0)
+
+    revenue      Float @default(0) // lifetime earnings
+    revenueShare Float @default(60) // %
+
+    socialLinks Json?
+
+    courses Course[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }

@@ -1,0 +1,18 @@
+model Module {
+    id       String   @id @default(uuid())
+    title    String
+    courseId String
+    course   Course   @relation(fields: [courseId], references: [id])
+    lessons  Lesson[]
+}
+
+model Lesson {
+    id        String  @id @default(uuid())
+    title     String
+    videoUrl  String?
+    duration  Int
+    isPreview Boolean @default(false)
+
+    moduleId String
+    module   Module @relation(fields: [moduleId], references: [id])
+}

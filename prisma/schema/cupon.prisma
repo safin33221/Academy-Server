@@ -1,0 +1,19 @@
+enum CouponType {
+    PERCENTAGE
+    FLAT
+}
+
+model Coupon {
+    id         String     @id @default(uuid())
+    code       String     @unique
+    type       CouponType
+    value      Float
+    usageLimit Int?
+    usedCount  Int        @default(0)
+
+    courseId String
+    course   Course @relation(fields: [courseId], references: [id])
+
+    validTill DateTime
+    isActive  Boolean  @default(true)
+}

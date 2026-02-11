@@ -1,0 +1,35 @@
+enum CourseType {
+    ONLINE
+    OFFLINE
+    HYBRID
+}
+
+enum CourseAccess {
+    FREE
+    PAID
+}
+
+model Course {
+    id          String @id @default(uuid())
+    title       String
+    slug        String @unique
+    description String
+
+    type   CourseType
+    access CourseAccess
+    price  Float        @default(0)
+
+    isPremium Boolean @default(false)
+    approved  Boolean @default(false)
+
+    instructorId String
+    // instructor   User   @relation(fields: [instructorId], references: [id])
+
+    modules Module[]
+    batches Batch[]
+    coupons Coupon[]
+
+    createdAt   DateTime     @default(now())
+    enrollments Enrollment[]
+    instructor  Instructor   @relation(fields: [instructorId], references: [id])
+}

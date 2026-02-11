@@ -1,5 +1,13 @@
 enum UserRole {
+    SUPER_ADMIN
     ADMIN
     INSTRUCTOR
     STUDENT
+}
+
+enum InstructorStatus {
+    PENDING
+    APPROVED
+    REJECTED
+    SUSPENDED
 }
