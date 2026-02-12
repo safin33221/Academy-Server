@@ -51,7 +51,7 @@ const login = async (payload: ILoginPayload) => {
     });
 
     if (!user) {
-        throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid credentials");
+        throw new ApiError(httpStatus.UNAUTHORIZED, "Account Not Found");
     }
 
     if (!user.isActive) {
