@@ -27,7 +27,7 @@ const sendOtp = async ({ email }: ISendOtpPayload) => {
     if (user.isVerified) {
         throw new ApiError(httpCode.BAD_REQUEST, "User already verified");
     }
-    const name = `${user.firstName} ${user.lastName}`
+    const name = `${user.name}`
 
     const otp = generateOtp();
     const hash = await bcrypt.hash(otp, 10);

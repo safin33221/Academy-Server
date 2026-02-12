@@ -66,8 +66,8 @@ const getAllUsers = async (options: IOptions, params: any) => {
             // orderBy: sortBy || '',
             select: {
                 id: true,
-                firstName: true,
-                lastName: true,
+                name: true,
+
                 email: true,
                 role: true,
                 isActive: true,
@@ -107,8 +107,8 @@ const updateUser = async (id: string, payload: IUserUpdatePayload) => {
         data: payload,
         select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
+
             email: true,
             role: true,
             isActive: true,
@@ -119,7 +119,7 @@ const updateUser = async (id: string, payload: IUserUpdatePayload) => {
 const softDeleteUser = async (id: string) => {
     return prisma.user.update({
         where: { id },
-        data: { isDelete: true },
+        data: { isDeleted: true },
     });
 };
 
