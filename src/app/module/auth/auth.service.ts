@@ -28,10 +28,10 @@ const register = async (payload: IRegisterPayload) => {
 
     const user = await prisma.user.create({
         data: {
-            firstName: payload.firstName,
-            lastName: payload.lastName,
+            name: payload.name,
             email: payload.email,
             password: hashedPassword,
+            phone: payload.phone
         },
     });
 

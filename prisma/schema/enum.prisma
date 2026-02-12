@@ -3,6 +3,7 @@ enum UserRole {
     ADMIN
     INSTRUCTOR
     STUDENT
+    USER
 }
 
 enum InstructorStatus {
