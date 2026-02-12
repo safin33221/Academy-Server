@@ -1,4 +1,3 @@
-import { Request, Response, NextFunction } from "express";
 import httpCode from "http-status";
 import { UserService } from "./user.service.js";
 import catchAsync from "../../shared/catchAsync.js";
@@ -24,7 +23,7 @@ const getAllUsers = catchAsync(async (req, res) => {
 
 
 const getSingleUser = catchAsync(
-    async (req: Request, res: Response) => {
+    async (req, res) => {
         const user = await UserService.getSingleUser(req.params.id as string);
 
         sendResponse(res, {
@@ -37,7 +36,7 @@ const getSingleUser = catchAsync(
 );
 
 const updateUser = catchAsync(
-    async (req: Request, res: Response) => {
+    async (req, res) => {
         const user = await UserService.updateUser(req.params.id as string, req.body);
 
         sendResponse(res, {
@@ -50,7 +49,7 @@ const updateUser = catchAsync(
 );
 
 const deleteUser = catchAsync(
-    async (req: Request, res: Response) => {
+    async (req, res) => {
         await UserService.softDeleteUser(req.params.id as string);
 
         sendResponse(res, {

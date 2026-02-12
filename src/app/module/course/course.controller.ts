@@ -1,14 +1,12 @@
-import { NextFunction, Request, Response } from "express";
 import { CourseService } from "./course.service.js";
 import catchAsync from "../../shared/catchAsync.js";
 import sendResponse from "../../shared/sendResponse.js";
 import httpCode from "../../utils/httpStatus.js";
 import pick from "../../utils/pick.js";
-import { userFilterableField, userSearchableField } from "../user/user.constant.js";
 import { courseFilterableFields } from "./course.constant.js";
 
 const createCourse = catchAsync(
-    async (req: Request, res: Response, _next: NextFunction) => {
+    async (req, res) => {
 
         const instructorId = req?.user?.id as string;
 
@@ -28,7 +26,7 @@ const createCourse = catchAsync(
 
 const getAllCourses = catchAsync(
 
-    async (req: Request, res: Response, _next: NextFunction) => {
+    async (req, res) => {
         const options = pick(req.query, ['limit', 'page', 'sortBy', 'sortOrder'])
         const filter = pick(req.query, courseFilterableFields)
         const result = await CourseService.getAllCourses(options, filter);
@@ -44,7 +42,7 @@ const getAllCourses = catchAsync(
 );
 
 const getSingleCourse = catchAsync(
-    async (req: Request, res: Response, _next: NextFunction) => {
+    async (req, res) => {
         const result = await CourseService.getSingleCourse(
             req.params.id as string
         );
@@ -59,7 +57,7 @@ const getSingleCourse = catchAsync(
 );
 
 const updateCourse = catchAsync(
-    async (req: Request, res: Response, _next: NextFunction) => {
+    async (req, res) => {
         const result = await CourseService.updateCourse(
             req.params.id as string,
             req.body
@@ -75,7 +73,7 @@ const updateCourse = catchAsync(
 );
 
 const deleteCourse = catchAsync(
-    async (req: Request, res: Response, _next: NextFunction) => {
+    async (req, res) => {
         await CourseService.deleteCourse(req.params.id as string);
 
         sendResponse(res, {
@@ -87,7 +85,7 @@ const deleteCourse = catchAsync(
 );
 
 const approveCourse = catchAsync(
-    async (req: Request, res: Response, _next: NextFunction) => {
+    async (req, res) => {
         const result = await CourseService.approveCourse(
             req.params.id as string
         );

@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import type { Request, RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import prisma from "../../lib/prisma.js";
 
@@ -10,20 +10,15 @@ interface JwtPayload {
     exp?: number;
 }
 
-// Extend Express Request
-declare global {
-    namespace Express {
-        interface Request {
-            user?: JwtPayload;
-        }
-    }
+interface AuthenticatedRequest extends Request {
+    user?: JwtPayload;
 }
 
-const auth =
+const auth: (...roles: string[]) => RequestHandler =
     (...roles: string[]) =>
-        async (req: Request, res: Response, next: NextFunction) => {
+        async (req, res, next) => {
             try {
-                const authHeader = req.headers.authorization;
+                const authHeader = req.header("authorization");
 
                 if (!authHeader || !authHeader.startsWith("Bearer ")) {
                     return res.status(401).json({
@@ -65,7 +60,8 @@ const auth =
                     });
                 }
 
-                req.user = {
+                const authReq = req as AuthenticatedRequest;
+                authReq.user = {
                     id: user.id,
                     role: user.role,
                 };
