@@ -4,7 +4,22 @@ import catchAsync from "../../shared/catchAsync.js";
 import sendResponse from "../../shared/sendResponse.js";
 import pick from "../../utils/pick.js";
 import { userFilterableField } from "./user.constant.js";
+import { Request, Response } from "express";
+import { JwtPayload } from "jsonwebtoken";
 
+
+const getMe = catchAsync(async (req: Request, res: Response) => {
+    const id = req.user?.id
+
+    const result = await UserService.getMe(id as string);
+
+    sendResponse(res, {
+        status: httpCode.OK,
+        success: true,
+        message: "Users retrieved successfully",
+        data: result,
+    });
+})
 const getAllUsers = catchAsync(async (req, res) => {
     const options = pick(req.query, ['limit', 'page', 'sortBy', 'sortOrder'])
     const filters = pick(req.query, userFilterableField)
@@ -61,6 +76,7 @@ const deleteUser = catchAsync(
 );
 
 export const UserController = {
+    getMe,
     getAllUsers,
     getSingleUser,
     updateUser,

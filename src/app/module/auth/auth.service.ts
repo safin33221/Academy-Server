@@ -68,16 +68,17 @@ const login = async (payload: ILoginPayload) => {
     }
 
     const accessToken = generateToken(
-        { userId: user.id, role: user.role },
+        { id: user.id, role: user.role },
         env.JWT_ACCESS_SECRET as Secret,
-        parseInt(env.JWT_ACCESS_EXPIRES_IN)
+        env.JWT_ACCESS_EXPIRES_IN   // remove parseInt
     );
 
     const refreshToken = generateToken(
-        { userId: user.id },
+        { id: user.id },
         env.JWT_REFRESH_SECRET as Secret,
-        parseInt(env.JWT_REFRESH_EXPIRES_IN)
+        env.JWT_REFRESH_EXPIRES_IN  // remove parseInt
     );
+
 
     return {
         accessToken,
