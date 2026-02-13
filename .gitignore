@@ -7,3 +7,5 @@ dist
 
 .vercel
 
+/prisma/migration_backup
+

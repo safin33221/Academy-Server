@@ -1,36 +1,6 @@
-enum CourseType {
-    ONLINE
-    OFFLINE
-    HYBRID
-}
-
-enum CourseAccess {
-    FREE
-    PAID
-}
-
-enum CourseLevel {
-    BEGINNER
-    INTERMEDIATE
-    ADVANCED
-}
-
-enum CourseStatus {
-    DRAFT
-    REVIEW
-    PUBLISHED
-    ARCHIVED
-}
-
-enum EnrollmentStatus {
-    OPEN
-    CLOSED
-    UPCOMING
-}
-
 model Course {
     id          String @id @default(uuid())
-    title       String
+    title       String @unique
     slug        String @unique
     description String
     thumbnail   String
@@ -46,22 +16,7 @@ model Course {
     discountPrice Float?
     isPremium     Boolean @default(false)
 
-    // Enrollment Window
-    enrollmentStart  DateTime?
-    enrollmentEnd    DateTime?
-    enrollmentStatus EnrollmentStatus @default(UPCOMING)
-
-    // Course Duration
-    startDate       DateTime?
-    endDate         DateTime?
     durationInWeeks Int?
-
-    // Capacity
-    maxStudents Int?
-    seatsFilled Int  @default(0)
-
-    // Location (for offline/hybrid)
-    location String?
 
     // Certificate
     certificateEnabled Boolean @default(false)
@@ -75,17 +30,21 @@ model Course {
     isDeleted Boolean @default(false)
 
     // Relations
-    instructorId String?
-    modules      Module[]
-    batches      Batch[]
-    coupons      Coupon[]
-    enrollments  Enrollment[]
-    reviews      Review[]
+    // instructorId String?
+    // instructor   User?   @relation(fields: [instructorId], references: [id]) // এই লাইন যোগ করুন
+
+    modules Module[]
+    batches Batch[]
+    coupons Coupon[]
+    reviews Review[]
 
     // Analytics
-    averageRating Float @default(0)
-    totalReviews  Int   @default(0)
+    averageRating    Float @default(0)
+    totalReviews     Int   @default(0)
+    totalEnrollments Int   @default(0)
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
+    createdAt        DateTime        @default(now())
+    updatedAt        DateTime        @default(now()) @updatedAt
+    courseCategory   CourseCategory? @relation(fields: [courseCategoryId], references: [id])
+    courseCategoryId String?
 }

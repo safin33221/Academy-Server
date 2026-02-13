@@ -8,12 +8,18 @@ import {
     deleteUserZodSchema,
 } from "./user.validation.js";
 import validateRequest from "../../middleware/validateRequest.js";
+import auth from "../../middleware/auth.js";
 
 const router: Router = Router();
 
 /**
  * User Management Routes
  */
+router.get(
+    "/get-me",
+    auth(),
+    UserController.getMe
+);
 router.get(
     "/",
     validateRequest(getAllUsersZodSchema),
@@ -28,14 +34,14 @@ router.get(
 
 router.patch(
     "/:id",
-    validateRequest(updateUserZodSchema),
+    // validateRequest(updateUserZodSchema),
     UserController.updateUser
 );
 
-router.delete(
-    "/:id",
-    validateRequest(deleteUserZodSchema),
-    UserController.deleteUser
+router.patch(
+    "/toggle-user-block-status/:id",
+    // validateRequest(deleteUserZodSchema),
+    UserController.toggleUserBlockStatus
 );
 
 export const UserRoutes = router;

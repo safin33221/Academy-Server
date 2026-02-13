@@ -3,17 +3,73 @@ enum CouponType {
     FLAT
 }
 
+enum CouponApplicability {
+    ALL_COURSES // সব কোর্সে
+    SPECIFIC_COURSES // নির্দিষ্ট কিছু কোর্সে
+    SPECIFIC_BATCHES // নির্দিষ্ট কিছু ব্যাচে (নতুন!)
+    FIRST_PURCHASE // প্রথম ক্রয়ে (নতুন!)
+}
+
+enum CouponStatus {
+    ACTIVE
+    INACTIVE
+    EXPIRED
+    SCHEDULED
+}
+
 model Coupon {
-    id         String     @id @default(uuid())
-    code       String     @unique
-    type       CouponType
-    value      Float
-    usageLimit Int?
-    usedCount  Int        @default(0)
+    id   String     @id @default(uuid())
+    code String     @unique
+    type CouponType
 
-    courseId String
-    course   Course @relation(fields: [courseId], references: [id])
+    // Discount Value
+    value       Float // PERCENTAGE হলে 10 মানে 10%, FLAT হলে 500 মানে ৫০০ টাকা
+    minPurchase Float? // সর্বনিম্ন ক্রয় মূল্য (যেমন: ১০০০ টাকার উপরে)
+    maxDiscount Float? // সর্বোচ্চ ডিসকাউন্ট (PERCENTAGE টাইপের জন্য)
 
+    // Usage Limits
+    usageLimit   Int? // মোট কতবার ব্যবহার করা যাবে
+    usedCount    Int  @default(0)
+    perUserLimit Int? @default(1) // প্রতি ইউজার কতবার ব্যবহার করতে পারবে
+
+    // Applicability
+    applicability CouponApplicability @default(SPECIFIC_COURSES)
+    courseIds     String[] // নির্দিষ্ট কোর্স (applicability = SPECIFIC_COURSES হলে)
+    batchIds      String[] // নির্দিষ্ট ব্যাচ (applicability = SPECIFIC_BATCHES হলে)
+
+    // User Eligibility
+    userIds    String[] // শুধু নির্দিষ্ট ইউজারদের জন্য
+    userGroups String[] // "STUDENT", "ALUMNI", "CORPORATE" ইত্যাদি
+
+    // Date Range
+    validFrom DateTime     @default(now())
     validTill DateTime
-    isActive  Boolean  @default(true)
+    isActive  Boolean      @default(true)
+    status    CouponStatus @default(ACTIVE) // computed field হতে পারে
+
+    // Description
+    title              String? // কুপন টাইটেল (যেমন: "হোলি স্পেশাল অফার")
+    description        String? // কুপনের বিস্তারিত
+    termsAndConditions String?
+
+    // Relations
+    courseId String? // ব্যাকওয়ার্ড কম্প্যাটিবিলিটির জন্য (optional)
+    course   Course? @relation(fields: [courseId], references: [id])
+
+    createdBy     String?
+    createdByUser User?   @relation(fields: [createdBy], references: [id])
+
+    enrollments Enrollment[]
+
+    // Timestamps
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+    deletedAt DateTime? // soft delete
+
+    @@unique([code, deletedAt]) // soft delete এর সাথে unique
+    // Indexes
+    @@index([code])
+    @@index([status])
+    @@index([validFrom, validTill])
+    @@index([applicability])
 }

@@ -4,7 +4,22 @@ import catchAsync from "../../shared/catchAsync.js";
 import sendResponse from "../../shared/sendResponse.js";
 import pick from "../../utils/pick.js";
 import { userFilterableField } from "./user.constant.js";
+import { Request, Response } from "express";
+import { JwtPayload } from "jsonwebtoken";
 
+
+const getMe = catchAsync(async (req: Request, res: Response) => {
+    const id = req.user?.id
+
+    const result = await UserService.getMe(id as string);
+
+    sendResponse(res, {
+        status: httpCode.OK,
+        success: true,
+        message: "Users retrieved successfully",
+        data: result,
+    });
+})
 const getAllUsers = catchAsync(async (req, res) => {
     const options = pick(req.query, ['limit', 'page', 'sortBy', 'sortOrder'])
     const filters = pick(req.query, userFilterableField)
@@ -37,6 +52,7 @@ const getSingleUser = catchAsync(
 
 const updateUser = catchAsync(
     async (req, res) => {
+
         const user = await UserService.updateUser(req.params.id as string, req.body);
 
         sendResponse(res, {
@@ -48,21 +64,25 @@ const updateUser = catchAsync(
     }
 );
 
-const deleteUser = catchAsync(
+const toggleUserBlockStatus = catchAsync(
     async (req, res) => {
-        await UserService.softDeleteUser(req.params.id as string);
+        const result = await UserService.toggleUserBlockStatus(req.params.id as string);
 
         sendResponse(res, {
             status: httpCode.OK,
             success: true,
-            message: "User deleted successfully",
+            message: result.isBlocked
+                ? "User blocked successfully"
+                : "User unblocked successfully",
+
         });
     }
 );
 
 export const UserController = {
+    getMe,
     getAllUsers,
     getSingleUser,
     updateUser,
-    deleteUser,
+    toggleUserBlockStatus,
 };

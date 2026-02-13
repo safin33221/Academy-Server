@@ -27,8 +27,15 @@ model CourseCategory {
     order     Int? // For sorting categories manually
 
     // Relation with Course
-    // courses Course[]
+    courses     Course[] // এই লাইন যোগ করুন
+    courseCount Int      @default(0) // ডিনরমালাইজড কাউন্ট (অপশনাল)
 
+    // Timestamps
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt
+
+    // Indexes
+    @@index([status])
+    @@index([parentId])
+    @@index([order])
 }

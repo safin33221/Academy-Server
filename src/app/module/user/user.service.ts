@@ -7,8 +7,34 @@ import { paginationHelper } from "../../helper/paginationHelper.js";
 import { IOptions } from "../../interface/pagination.js";
 import { Prisma } from "@prisma/client";
 import { userSearchableField } from "./user.constant.js";
+import { JwtPayload } from "jsonwebtoken";
+import ApiError from "../../error/ApiError.js";
+import httpCode from "../../utils/httpStatus.js";
 
 
+
+const getMe = async (id: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            phone: true,
+            createdAt: true,
+            updatedAt: true,
+            isVerified: true,
+
+        },
+    });
+
+    if (!user) {
+        throw new ApiError(httpCode.NOT_FOUND, "User not found");
+    }
+
+    return user;
+};
 
 const getAllUsers = async (options: IOptions, params: any) => {
     const { page, limit, skip, sortBy } =
@@ -67,13 +93,16 @@ const getAllUsers = async (options: IOptions, params: any) => {
             select: {
                 id: true,
                 name: true,
-
                 email: true,
                 role: true,
                 isActive: true,
                 isVerified: true,
                 createdAt: true,
                 updatedAt: true,
+                isDeleted: true,
+                isBlocked: true,
+                phone: true,
+                lastLoginAt: true
             },
         }),
         prisma.user.count({
@@ -92,9 +121,6 @@ const getAllUsers = async (options: IOptions, params: any) => {
     };
 };
 
-
-
-
 const getSingleUser = async (id: string) => {
     return prisma.user.findFirst({
         where: { id, isDeleted: false },
@@ -102,6 +128,7 @@ const getSingleUser = async (id: string) => {
 };
 
 const updateUser = async (id: string, payload: IUserUpdatePayload) => {
+    console.log(payload);
     return prisma.user.update({
         where: { id },
         data: payload,
@@ -116,16 +143,29 @@ const updateUser = async (id: string, payload: IUserUpdatePayload) => {
     });
 };
 
-const softDeleteUser = async (id: string) => {
+const toggleUserBlockStatus = async (id: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id },
+        select: { isBlocked: true },
+    });
+
+    if (!user) {
+        throw new Error("User not found");
+    }
+
     return prisma.user.update({
         where: { id },
-        data: { isDeleted: true },
+        data: {
+            isBlocked: !user.isBlocked,
+            isActive: user.isBlocked, // active when unblocked
+        },
     });
 };
 
 export const UserService = {
+    getMe,
     getAllUsers,
     getSingleUser,
     updateUser,
-    softDeleteUser,
+    toggleUserBlockStatus,
 };
