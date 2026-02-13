@@ -34,14 +34,14 @@ router.get(
 
 router.patch(
     "/:id",
-    validateRequest(updateUserZodSchema),
+    // validateRequest(updateUserZodSchema),
     UserController.updateUser
 );
 
-router.delete(
-    "/:id",
-    validateRequest(deleteUserZodSchema),
-    UserController.deleteUser
+router.patch(
+    "/toggle-user-block-status/:id",
+    // validateRequest(deleteUserZodSchema),
+    UserController.toggleUserBlockStatus
 );
 
 export const UserRoutes = router;

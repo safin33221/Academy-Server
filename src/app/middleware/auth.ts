@@ -20,7 +20,7 @@ const auth: (...roles: string[]) => RequestHandler =
         async (req, res, next) => {
             try {
                 const token = req.cookies.accessToken;
-                console.log({ token });
+
                 if (!token) {
                     return res.status(401).json({
                         success: false,
@@ -34,7 +34,6 @@ const auth: (...roles: string[]) => RequestHandler =
                     token,
                     env.JWT_ACCESS_SECRET as string
                 ) as JwtPayload;
-                console.log({ decoded });
                 const user = await prisma.user.findUnique({
                     where: { id: decoded.id },
                 });

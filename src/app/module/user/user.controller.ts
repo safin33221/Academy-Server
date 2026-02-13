@@ -52,6 +52,7 @@ const getSingleUser = catchAsync(
 
 const updateUser = catchAsync(
     async (req, res) => {
+
         const user = await UserService.updateUser(req.params.id as string, req.body);
 
         sendResponse(res, {
@@ -63,14 +64,17 @@ const updateUser = catchAsync(
     }
 );
 
-const deleteUser = catchAsync(
+const toggleUserBlockStatus = catchAsync(
     async (req, res) => {
-        await UserService.softDeleteUser(req.params.id as string);
+        const result = await UserService.toggleUserBlockStatus(req.params.id as string);
 
         sendResponse(res, {
             status: httpCode.OK,
             success: true,
-            message: "User deleted successfully",
+            message: result.isBlocked
+                ? "User blocked successfully"
+                : "User unblocked successfully",
+
         });
     }
 );
@@ -80,5 +84,5 @@ export const UserController = {
     getAllUsers,
     getSingleUser,
     updateUser,
-    deleteUser,
+    toggleUserBlockStatus,
 };

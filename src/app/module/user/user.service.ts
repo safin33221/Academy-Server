@@ -24,6 +24,8 @@ const getMe = async (id: string) => {
             phone: true,
             createdAt: true,
             updatedAt: true,
+            isVerified: true,
+
         },
     });
 
@@ -91,13 +93,16 @@ const getAllUsers = async (options: IOptions, params: any) => {
             select: {
                 id: true,
                 name: true,
-
                 email: true,
                 role: true,
                 isActive: true,
                 isVerified: true,
                 createdAt: true,
                 updatedAt: true,
+                isDeleted: true,
+                isBlocked: true,
+                phone: true,
+                lastLoginAt: true
             },
         }),
         prisma.user.count({
@@ -123,6 +128,7 @@ const getSingleUser = async (id: string) => {
 };
 
 const updateUser = async (id: string, payload: IUserUpdatePayload) => {
+    console.log(payload);
     return prisma.user.update({
         where: { id },
         data: payload,
@@ -137,10 +143,22 @@ const updateUser = async (id: string, payload: IUserUpdatePayload) => {
     });
 };
 
-const softDeleteUser = async (id: string) => {
+const toggleUserBlockStatus = async (id: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id },
+        select: { isBlocked: true },
+    });
+
+    if (!user) {
+        throw new Error("User not found");
+    }
+
     return prisma.user.update({
         where: { id },
-        data: { isDeleted: true },
+        data: {
+            isBlocked: !user.isBlocked,
+            isActive: user.isBlocked, // active when unblocked
+        },
     });
 };
 
@@ -149,5 +167,5 @@ export const UserService = {
     getAllUsers,
     getSingleUser,
     updateUser,
-    softDeleteUser,
+    toggleUserBlockStatus,
 };
