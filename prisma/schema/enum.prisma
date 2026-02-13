@@ -12,3 +12,27 @@ enum InstructorStatus {
     REJECTED
     SUSPENDED
 }
+
+enum CourseType {
+    ONLINE
+    OFFLINE
+    HYBRID
+}
+
+enum CourseAccess {
+    FREE
+    PAID
+}
+
+enum CourseLevel {
+    BEGINNER
+    INTERMEDIATE
+    ADVANCED
+}
+
+enum CourseStatus {
+    DRAFT
+    REVIEW
+    PUBLISHED
+    ARCHIVED
+}
