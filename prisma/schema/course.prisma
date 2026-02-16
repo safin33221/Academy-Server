@@ -1,10 +1,12 @@
 // ================= COURSE =================
 model Course {
-    id               String @id @default(uuid())
-    slug             String @unique
+    id               String  @id @default(uuid())
+    slug             String  @unique
     title            String
     shortDescription String
     fullDescription  String
+    thumbnail        String?
+    videoUrl         String?
 
     price         Float
     discountPrice Float?
@@ -28,6 +30,7 @@ model Course {
     requirements Requirement[]
     reviews      Review[]
     faqs         FAQ[]
+    batches      Batch[]
 }
 
 // ================= CURRICULUM =================
