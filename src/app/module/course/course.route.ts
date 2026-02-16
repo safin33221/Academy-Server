@@ -14,7 +14,7 @@ const router = Router();
 router.post(
     "/",
     // auth(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    validateRequest(courseValidation.createCourseZodSchema),
+    // validateRequest(courseValidation.createCourseZodSchema),
     CourseController.createCourse
 );
 
