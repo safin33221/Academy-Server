@@ -1,50 +1,78 @@
-
-
 import { Prisma } from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
 import { paginationHelper } from "../../helper/paginationHelper.js";
 import { IOptions } from "../../interface/pagination.js";
 import { courseSearchableFields } from "./course.constant.js";
 
-const createCourse = async (payload: any, instructorId: string) => {
-    // Generate slug
-    const slug = payload.title
+
+
+export const createCourse = async (payload: any) => {
+    // =========================
+    // 1️⃣ Generate Unique Slug
+    // =========================
+
+    const baseSlug = payload.title
         .toLowerCase()
         .trim()
         .replace(/\s+/g, "-")
         .replace(/[^\w-]+/g, "");
 
-    // Auto-generate metaTitle if not provided
-    const metaTitle =
-        payload.metaTitle ||
-        `${payload.title} | Premium Academy`;
+    let slug = baseSlug;
+    let counter = 1;
 
-    // FREE course must have price 0
+    while (await prisma.course.findUnique({ where: { slug } })) {
+        slug = `${baseSlug}-${counter++}`;
+    }
+
+    // =========================
+    // 2️⃣ Meta Title
+    // =========================
+
+    const metaTitle =
+        payload.metaTitle?.trim() || `${payload.title} | Premium Academy`;
+
+    // =========================
+    // 3️⃣ Access & Price Validation
+    // =========================
+
     if (payload.access === "FREE") {
         payload.price = 0;
     }
 
-    // PAID course must have price > 0
-    if (payload.access === "PAID" && (!payload.price || payload.price <= 0)) {
-        throw new Error("Paid course must have a valid price greater than 0");
+    if (payload.access === "PAID") {
+        if (!payload.price || payload.price <= 0) {
+            throw new Error("Paid course must have price greater than 0");
+        }
     }
 
-    // Validate enrollment window
     if (
-        payload.enrollmentStart &&
-        payload.enrollmentEnd &&
-        new Date(payload.enrollmentStart) > new Date(payload.enrollmentEnd)
+        payload.discountPrice &&
+        payload.price &&
+        payload.discountPrice > payload.price
     ) {
-        throw new Error("Enrollment end date must be after start date");
+        throw new Error("Discount price cannot be greater than price");
     }
+
+
+
+    // =========================
+    // 5️⃣ Extract Modules
+    // =========================
+
+
+
+    // =========================
+    // 6️⃣ Create Course
+    // =========================
 
     const course = await prisma.course.create({
         data: {
             ...payload,
             slug,
             metaTitle,
-            instructorId,
+
         },
+
     });
 
     return course;
