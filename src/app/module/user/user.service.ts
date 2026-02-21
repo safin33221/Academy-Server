@@ -25,6 +25,7 @@ const getMe = async (id: string) => {
             createdAt: true,
             updatedAt: true,
             isVerified: true,
+            lastLoginAt: true
 
         },
     });
