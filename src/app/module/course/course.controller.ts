@@ -8,11 +8,10 @@ import { courseFilterableFields } from "./course.constant.js";
 const createCourse = catchAsync(
     async (req, res) => {
 
-        const instructorId = req?.user?.id as string;
 
         const result = await CourseService.createCourse(
             req.body,
-            instructorId
+
         );
 
         sendResponse(res, {

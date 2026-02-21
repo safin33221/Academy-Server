@@ -1,50 +1,87 @@
+// ================= COURSE =================
 model Course {
-    id          String @id @default(uuid())
-    title       String @unique
-    slug        String @unique
-    description String
-    thumbnail   String
+    id               String  @id @default(uuid())
+    slug             String  @unique
+    title            String
+    shortDescription String
+    fullDescription  String
+    thumbnail        String?
+    videoUrl         String?
 
-    // Classification
-    type   CourseType
-    access CourseAccess
-    level  CourseLevel
-    status CourseStatus @default(DRAFT)
-
-    // Pricing
-    price         Float   @default(0)
+    price         Float
     discountPrice Float?
-    isPremium     Boolean @default(false)
+    level         String
+    category      String
 
-    durationInWeeks Int?
+    duration     Int // hours
+    totalClasses Int
 
-    // Certificate
-    certificateEnabled Boolean @default(false)
+    rating      Float @default(0)
+    reviewCount Int   @default(0)
 
-    // SEO
-    metaTitle       String?
-    metaDescription String?
+    isPremium  Boolean @default(false)
+    isFeatured Boolean @default(false)
 
-    // Admin Control
-    approved  Boolean @default(false)
-    isDeleted Boolean @default(false)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
-    // Relations
-    // instructorId String?
-    // instructor   User?   @relation(fields: [instructorId], references: [id]) // এই লাইন যোগ করুন
+    curriculum   Curriculum[]
+    learnings    Learning[]
+    requirements Requirement[]
+    reviews      Review[]
+    faqs         FAQ[]
+    batches      Batch[]
+}
 
-    modules Module[]
-    batches Batch[]
-    coupons Coupon[]
-    reviews Review[]
+// ================= CURRICULUM =================
+model Curriculum {
+    id      String @id @default(uuid())
+    title   String
+    content String
+    order   Int
 
-    // Analytics
-    averageRating    Float @default(0)
-    totalReviews     Int   @default(0)
-    totalEnrollments Int   @default(0)
+    courseId String
+    course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
 
-    createdAt        DateTime        @default(now())
-    updatedAt        DateTime        @default(now()) @updatedAt
-    courseCategory   CourseCategory? @relation(fields: [courseCategoryId], references: [id])
-    courseCategoryId String?
+// ================= WHAT YOU WILL LEARN =================
+model Learning {
+    id      String @id @default(uuid())
+    content String
+
+    courseId String
+    course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+// ================= REQUIREMENTS =================
+model Requirement {
+    id      String @id @default(uuid())
+    content String
+
+    courseId String
+    course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+// ================= REVIEWS =================
+model Review {
+    id        String   @id @default(uuid())
+    rating    Int
+    comment   String
+    createdAt DateTime @default(now())
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    courseId String
+    course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+// ================= FAQ =================
+model FAQ {
+    id       String @id @default(uuid())
+    question String
+    answer   String
+
+    courseId String
+    course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 }

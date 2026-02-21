@@ -1,49 +1,108 @@
-
-
 import { Prisma } from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
 import { paginationHelper } from "../../helper/paginationHelper.js";
 import { IOptions } from "../../interface/pagination.js";
 import { courseSearchableFields } from "./course.constant.js";
 
-const createCourse = async (payload: any, instructorId: string) => {
-    // Generate slug
-    const slug = payload.title
+
+export const createCourse = async (payload: any) => {
+    // =========================
+    // 1️⃣ Generate Unique Slug
+    // =========================
+    console.log({ payload });
+    const baseSlug = payload.title
         .toLowerCase()
         .trim()
         .replace(/\s+/g, "-")
         .replace(/[^\w-]+/g, "");
 
-    // Auto-generate metaTitle if not provided
-    const metaTitle =
-        payload.metaTitle ||
-        `${payload.title} | Premium Academy`;
+    let slug = baseSlug;
+    let counter = 1;
 
-    // FREE course must have price 0
+    while (await prisma.course.findUnique({ where: { slug } })) {
+        slug = `${baseSlug}-${counter++}`;
+    }
+
+    // =========================
+    // 2️⃣ Meta Title
+    // =========================
+
+
+
+    // =========================
+    // 3️⃣ Access & Price Validation
+    // =========================
+
     if (payload.access === "FREE") {
         payload.price = 0;
     }
 
-    // PAID course must have price > 0
-    if (payload.access === "PAID" && (!payload.price || payload.price <= 0)) {
-        throw new Error("Paid course must have a valid price greater than 0");
+    if (payload.access === "PAID") {
+        if (!payload.price || payload.price <= 0) {
+            throw new Error("Paid course must have price greater than 0");
+        }
     }
 
-    // Validate enrollment window
     if (
-        payload.enrollmentStart &&
-        payload.enrollmentEnd &&
-        new Date(payload.enrollmentStart) > new Date(payload.enrollmentEnd)
+        payload.discountPrice &&
+        payload.price &&
+        payload.discountPrice > payload.price
     ) {
-        throw new Error("Enrollment end date must be after start date");
+        throw new Error("Discount price cannot be greater than price");
     }
+
+    // =========================
+    // 4️⃣ Extract Nested Data
+    // =========================
+
+    const {
+        curriculum = [],
+        learnings = [],
+        faqs = [],
+        ...courseData
+    } = payload;
+
+    // =========================
+    // 5️⃣ Create Course (Nested)
+    // =========================
 
     const course = await prisma.course.create({
         data: {
-            ...payload,
+            ...courseData,
             slug,
-            metaTitle,
-            instructorId,
+
+
+            curriculum: curriculum.length
+                ? {
+                    create: curriculum.map((item: any, index: number) => ({
+                        title: item.title,
+                        content: item.content,
+                        order: item.order ?? index + 1,
+                    })),
+                }
+                : undefined,
+
+            learnings: learnings.length
+                ? {
+                    create: learnings.map((item: any) => ({
+                        content: item.content,
+                    })),
+                }
+                : undefined,
+
+            faqs: faqs.length
+                ? {
+                    create: faqs.map((item: any) => ({
+                        question: item.question,
+                        answer: item.answer,
+                    })),
+                }
+                : undefined,
+        },
+        include: {
+            curriculum: true,
+            learnings: true,
+            faqs: true,
         },
     });
 
@@ -69,8 +128,8 @@ const getAllCourses = async (options: IOptions, params: any) => {
         const searchWords = normalizedSearchTerm.split(/\s+/);
 
         andConditions.push({
-            AND: searchWords.map(word => ({
-                OR: courseSearchableFields.map(field => ({
+            AND: searchWords.map((word) => ({
+                OR: courseSearchableFields.map((field) => ({
                     [field]: {
                         contains: word,
                         mode: "insensitive",
@@ -89,7 +148,7 @@ const getAllCourses = async (options: IOptions, params: any) => {
         });
     }
 
-    // 💰 Price Range Filter
+    // 💰 Price Filter
     if (minPrice || maxPrice) {
         andConditions.push({
             price: {
@@ -102,20 +161,24 @@ const getAllCourses = async (options: IOptions, params: any) => {
     const whereCondition: Prisma.CourseWhereInput =
         andConditions.length > 0 ? { AND: andConditions } : {};
 
-    // 📦 Query Data
     const [data, total] = await Promise.all([
         prisma.course.findMany({
             where: whereCondition,
             skip,
             take: limit,
+
             include: {
-                modules: true,
-                batches: true,
-                coupons: true,
+                curriculum: true,
+                learnings: true,
+                requirements: true,
+                faqs: true,
+                reviews: true,
             },
-            orderBy: sortBy && sortOrder
-                ? { [sortBy]: sortOrder }
-                : { createdAt: "desc" },
+
+            orderBy:
+                sortBy && sortOrder
+                    ? { [sortBy]: sortOrder }
+                    : { createdAt: "desc" },
         }),
 
         prisma.course.count({
@@ -134,18 +197,17 @@ const getAllCourses = async (options: IOptions, params: any) => {
     };
 };
 
-
-const getSingleCourse = async (id: string) => {
+const getSingleCourse = async (slug: string) => {
     return prisma.course.findUnique({
-        where: { id },
+        where: { slug },
         include: {
-            modules: {
-                include: {
-                    lessons: true,
-                },
+            curriculum: {
+                orderBy: { order: "asc" },
             },
-            // instructor: true,
+            learnings: true,
+            requirements: true,
             reviews: true,
+            faqs: true,
         },
     });
 };

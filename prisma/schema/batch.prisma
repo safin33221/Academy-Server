@@ -5,108 +5,30 @@ enum BatchStatus {
     CANCELLED
 }
 
-enum BatchEnrollmentStatus {
-    OPEN
-    CLOSED
-    FULL
-    WAITLIST
-}
-
 model Batch {
-    id        String @id @default(uuid())
-    name      String
-    slug      String @unique
-    batchCode String @unique // যেমন: PYTHON-JAN-26-01
+    id   String @id @default(uuid())
+    name String
+    slug String @unique
 
-    // Relation with Course
     courseId String
-    course   Course @relation(fields: [courseId], references: [id])
+    course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
-    // Batch Specific Schedule
-    startDate       DateTime
-    endDate         DateTime
-    classDays       String[] // ["Saturday", "Monday"]
-    classTime       String // "7:00 PM - 9:00 PM"
-    totalClasses    Int
-    durationInWeeks Int
+    enrollmentStart DateTime
+    enrollmentEnd   DateTime
 
-    // Batch Specific Capacity
-    maxStudents     Int
-    seatsFilled     Int     @default(0)
-    seatsReserved   Int     @default(0)
-    waitlistCount   Int     @default(0)
-    waitlistEnabled Boolean @default(false)
+    startDate DateTime
+    endDate   DateTime?
 
-    // Batch Status
-    status           BatchStatus           @default(UPCOMING)
-    enrollmentStatus BatchEnrollmentStatus @default(OPEN)
+    maxStudents   Int
+    enrolledCount Int @default(0)
 
-    // Enrollment Window
-    enrollmentStart   DateTime?
-    enrollmentEnd     DateTime?
-    earlyBirdDeadline DateTime?
+    price    Int?
+    isActive Boolean @default(true)
 
-    // Batch Specific Pricing
-    basePrice      Float // বেস প্রাইস
-    currentPrice   Float // ডিসকাউন্ট/অফার সহ বর্তমান মূল্য
-    discountType   String? // "PERCENTAGE" বা "FIXED"
-    discountValue  Float?
-    hasEarlyBird   Boolean @default(false)
-    earlyBirdPrice Float?
+    status BatchStatus @default(UPCOMING)
 
-    // Location & Logistics
-    isOnline        Boolean @default(false)
-    meetingLink     String?
-    meetingId       String?
-    meetingPassword String?
-    location        String? // অফলাইন লোকেশন
-    roomNumber      String?
-    address         String?
+    // enrollments Enrollment[]
 
-    // Instructor & Mentors
-    // leadInstructorId String?
-    // leadInstructor   User?    @relation("LeadInstructor", fields: [leadInstructorId], references: [id])
-    // mentorIds        String[]
-    // mentors          User[]   @relation("BatchMentors")
-
-    // Resources
-    resources  Json? // Google Drive links, PDFs etc.
-    recordings Json? // Recorded video links
-    groupLink  String? // WhatsApp/FB Group Link
-
-    // Relations
-    enrollments       Enrollment[]
-    attendanceRecords Attendance[]
-    batchProgress     BatchProgress?
-    // announcements     Announcement[]
-
-    // Timestamps
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
-    deletedAt DateTime? // Soft delete
-
-    // Constraints & Indexes
-    @@unique([courseId, name])
-    @@index([status])
-    @@index([enrollmentStatus])
-    @@index([startDate])
-    // @@index([leadInstructorId])
-    @@index([batchCode])
-}
-
-model BatchProgress {
-    id      String @id @default(uuid())
-    batchId String @unique
-    batch   Batch  @relation(fields: [batchId], references: [id])
-
-    averageProgress  Float // সবার প্রগ্রেসের এভারেজ
-    completedCount   Int // যারা কমপ্লিট করেছে
-    activeCount      Int // যারা এক্টিভ আছে
-    droppedCount     Int
-    transferredCount Int   @default(0)
-
-    lastUpdated   DateTime @default(now())
-    lastUpdatedBy String?
-
-    @@index([batchId])
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
