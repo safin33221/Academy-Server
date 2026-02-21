@@ -2,13 +2,13 @@ model User {
     id String @id @default(uuid())
 
     // Identity
-    name     String
-    email    String @unique
-    phone    String @unique
-    password String
-
+    name         String
+    email        String   @unique
+    phone        String   @unique
+    password     String
+    profilePhoto String?
     // Authorization
-    role UserRole @default(USER)
+    role         UserRole @default(USER)
 
     // Account Status
     isVerified Boolean @default(false)

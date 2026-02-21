@@ -1,5 +1,4 @@
 
-import { IUserUpdatePayload } from "./user.interface.js";
 
 
 import prisma from "../../../lib/prisma.js";
@@ -7,9 +6,9 @@ import { paginationHelper } from "../../helper/paginationHelper.js";
 import { IOptions } from "../../interface/pagination.js";
 import { Prisma } from "@prisma/client";
 import { userSearchableField } from "./user.constant.js";
-import { JwtPayload } from "jsonwebtoken";
 import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";
+import { fileUploader } from "../../helper/fileUploader.js";
 
 
 
@@ -25,7 +24,8 @@ const getMe = async (id: string) => {
             createdAt: true,
             updatedAt: true,
             isVerified: true,
-            lastLoginAt: true
+            lastLoginAt: true,
+            profilePhoto: true
 
         },
     });
@@ -103,7 +103,8 @@ const getAllUsers = async (options: IOptions, params: any) => {
                 isDeleted: true,
                 isBlocked: true,
                 phone: true,
-                lastLoginAt: true
+                lastLoginAt: true,
+                profilePhoto: true
             },
         }),
         prisma.user.count({
@@ -128,18 +129,37 @@ const getSingleUser = async (id: string) => {
     });
 };
 
-const updateUser = async (id: string, payload: IUserUpdatePayload) => {
-    console.log(payload);
+const updateUser = async (
+    id: string,
+    req: any
+) => {
+    const file = req.file;
+
+    // 1️⃣ Prepare update payload safely
+    const allowedFields: Prisma.UserUpdateInput = {
+        name: req.body.name,
+        phone: req.body.phone,
+    };
+
+    // 2️⃣ Handle profile image upload
+    let imageUrl = null
+    if (file) {
+        const uploaded =
+            await fileUploader.uploadToCloudinary(file);
+        console.log({ uploaded });
+        imageUrl =
+            uploaded.secure_url;
+    }
+    console.log({ imageUrl });
+
+
+
+    // 4️⃣ Update user
     return prisma.user.update({
         where: { id },
-        data: payload,
-        select: {
-            id: true,
-            name: true,
-
-            email: true,
-            role: true,
-            isActive: true,
+        data: {
+            ...allowedFields,
+            profilePhoto: imageUrl
         },
     });
 };

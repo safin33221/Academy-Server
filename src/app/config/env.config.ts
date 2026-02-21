@@ -73,6 +73,11 @@ const env = {
         REDIS_USERNAME: required("REDIS_USERNAME")
     },
 
+    CLOUDINARY: {
+        CLOUDINARY_CLOUD_NAME: required("CLOUDINARY_CLOUD_NAME"),
+        CLOUDINARY_API_KEY: required("CLOUDINARY_API_KEY"),
+        CLOUDINARY_API_SECRET: required("CLOUDINARY_API_SECRET")
+    },
     /* File Upload */
     UPLOAD_DIR: optional("UPLOAD_DIR") || "uploads",
     MAX_FILE_SIZE: toNumber("MAX_FILE_SIZE", 10 * 1024 * 1024),
