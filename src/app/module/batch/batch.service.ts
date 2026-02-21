@@ -1,0 +1,237 @@
+import { BatchStatus } from "@prisma/client";
+import prisma from "../../../lib/prisma.js";
+
+const createBatch = async (payload: any) => {
+    // =========================
+    // 1?? Validate Course Exists
+    // =========================
+    const course = await prisma.course.findUnique({
+        where: { id: payload.courseId },
+    });
+
+    if (!course) {
+        throw new Error("Course not found");
+    }
+
+    // =========================
+    // 2?? Date Validation
+    // =========================
+    const startDate = new Date(payload.startDate);
+    const endDate = payload.endDate ? new Date(payload.endDate) : null;
+
+    if (Number.isNaN(startDate.getTime())) {
+        throw new Error("Invalid start date");
+    }
+
+    if (endDate && Number.isNaN(endDate.getTime())) {
+        throw new Error("Invalid end date");
+    }
+
+    if (endDate && startDate >= endDate) {
+        throw new Error("End date must be greater than start date");
+    }
+
+    const enrollmentStart = payload.enrollmentStart
+        ? new Date(payload.enrollmentStart)
+        : startDate;
+    const enrollmentEnd = payload.enrollmentEnd
+        ? new Date(payload.enrollmentEnd)
+        : endDate ?? startDate;
+
+    if (Number.isNaN(enrollmentStart.getTime())) {
+        throw new Error("Invalid enrollment start date");
+    }
+
+    if (Number.isNaN(enrollmentEnd.getTime())) {
+        throw new Error("Invalid enrollment end date");
+    }
+
+    if (enrollmentStart > enrollmentEnd) {
+        throw new Error("Enrollment end date must be greater than enrollment start date");
+    }
+
+    // =========================
+    // 3?? Capacity Validation
+    // =========================
+    if (!payload.capacity || payload.capacity <= 0) {
+        throw new Error("Capacity must be greater than 0");
+    }
+
+    // =========================
+    // 4?? Price Validation
+    // =========================
+    if (payload.price && payload.price < 0) {
+        throw new Error("Price cannot be negative");
+    }
+
+    if (
+        payload.discountPrice &&
+        payload.price &&
+        payload.discountPrice > payload.price
+    ) {
+        throw new Error("Discount price cannot be greater than price");
+    }
+
+    // =========================
+    // 5?? Generate Unique Slug
+    // =========================
+    const batchName = payload.name ?? payload.title;
+
+    if (!batchName || typeof batchName !== "string") {
+        throw new Error("Batch name is required");
+    }
+
+    const baseSlug = batchName
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^\w-]+/g, "");
+
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await prisma.batch.findUnique({ where: { slug } })) {
+        slug = `${baseSlug}-${counter++}`;
+    }
+
+    // =========================
+    // 6?? Create Batch
+    // =========================
+    const batch = await prisma.batch.create({
+        data: {
+            name: batchName,
+            slug,
+            courseId: payload.courseId,
+            enrollmentStart,
+            enrollmentEnd,
+            startDate,
+            endDate,
+            maxStudents: payload.capacity,
+            price: payload.price ?? 0,
+            status: payload.status ?? BatchStatus.UPCOMING,
+        },
+        include: {
+            course: true,
+        },
+    });
+
+    return batch;
+};
+
+
+const getAllBatches = async () => {
+    return prisma.batch.findMany({
+        include: {
+            course: true,
+        },
+        orderBy: {
+            createdAt: "desc",
+        },
+    });
+};
+const getSingleBatch = async (id: string) => {
+    return prisma.batch.findUnique({
+        where: { id },
+
+        include: {
+            course: true,
+        },
+
+    });
+};
+
+
+const updateBatch = async (id: string, payload: any) => {
+    const batch = await prisma.batch.findUnique({
+        where: { id },
+    });
+
+    if (!batch) {
+        throw new Error("Batch not found");
+    }
+
+    return prisma.batch.update({
+        where: { id },
+        data: payload,
+    });
+};
+const deleteBatch = async (id: string) => {
+    const batch = await prisma.batch.findFirst({
+        where: { id },
+    });
+
+    if (!batch) {
+        throw new Error("Batch not found");
+    }
+
+    return prisma.batch.delete({
+        where: { id }
+    });
+};
+
+
+const toggleBatchStatus = async (id: string) => {
+    const batch = await prisma.batch.findUnique({
+        where: { id },
+    });
+
+    if (!batch) {
+        throw new Error("Batch not found");
+    }
+
+    // Toggle logic (you can adjust if needed)
+    const newStatus =
+        batch.status === BatchStatus.CANCELLED
+            ? BatchStatus.UPCOMING
+            : BatchStatus.CANCELLED;
+
+    const updatedBatch = await prisma.batch.update({
+        where: { id },
+        data: {
+            status: newStatus,
+        },
+    });
+
+    return updatedBatch;
+};
+
+/* =========================
+   Update Batch Status (Enum Based)
+========================= */
+const updateBatchStatus = async (
+    id: string,
+    status: BatchStatus
+) => {
+    const batch = await prisma.batch.findUnique({
+        where: { id },
+    });
+
+    if (!batch) {
+        throw new Error("Batch not found");
+    }
+
+    // Validate enum manually (extra safety)
+    if (!Object.values(BatchStatus).includes(status)) {
+        throw new Error("Invalid batch status");
+    }
+
+    const updatedBatch = await prisma.batch.update({
+        where: { id },
+        data: {
+            status,
+        },
+    });
+
+    return updatedBatch;
+};
+
+
+export const BatchService = {
+    createBatch,
+    getAllBatches,
+    updateBatch,
+    deleteBatch,
+    getSingleBatch,
+    toggleBatchStatus,
+    updateBatchStatus
+}
