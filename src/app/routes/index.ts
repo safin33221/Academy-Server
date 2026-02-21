@@ -3,6 +3,7 @@ import { AuthRoutes } from '../module/auth/auth.route.js';
 import { OtpRoute } from '../module/otp/otp.route.js';
 import { UserRoutes } from '../module/user/user.route.js';
 import { CourseRoute } from '../module/course/course.route.js';
+import { BatchRoute } from '../module/batch/batch.route.js';
 
 
 
@@ -25,6 +26,10 @@ const moduleRoutes = [
     {
         path: '/course',
         route: CourseRoute
+    },
+    {
+        path: '/batch',
+        route: BatchRoute
     },
 
 ]

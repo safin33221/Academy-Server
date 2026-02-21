@@ -1,67 +1,108 @@
 import { BatchStatus } from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
+import ApiError from "../../error/ApiError.js";
+import httpCode from "../../utils/httpStatus.js";
 
 const createBatch = async (payload: any) => {
     // =========================
-    // 1?? Validate Course Exists
+    // 1️⃣ Validate Course Exists
     // =========================
+    if (!payload.courseId) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Course ID is required"
+        );
+    }
+
     const course = await prisma.course.findUnique({
         where: { id: payload.courseId },
     });
 
     if (!course) {
-        throw new Error("Course not found");
+        throw new ApiError(
+            httpCode.NOT_FOUND,
+            "Course not found"
+        );
     }
 
     // =========================
-    // 2?? Date Validation
+    // 2️⃣ Date Validation
     // =========================
     const startDate = new Date(payload.startDate);
-    const endDate = payload.endDate ? new Date(payload.endDate) : null;
+    const endDate = payload.endDate
+        ? new Date(payload.endDate)
+        : null;
 
-    if (Number.isNaN(startDate.getTime())) {
-        throw new Error("Invalid start date");
+    if (!payload.startDate || Number.isNaN(startDate.getTime())) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Invalid start date"
+        );
     }
 
-    if (endDate && Number.isNaN(endDate.getTime())) {
-        throw new Error("Invalid end date");
+    if (payload.endDate && Number.isNaN(endDate?.getTime())) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Invalid end date"
+        );
     }
 
     if (endDate && startDate >= endDate) {
-        throw new Error("End date must be greater than start date");
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "End date must be greater than start date"
+        );
     }
 
     const enrollmentStart = payload.enrollmentStart
         ? new Date(payload.enrollmentStart)
         : startDate;
+
     const enrollmentEnd = payload.enrollmentEnd
         ? new Date(payload.enrollmentEnd)
         : endDate ?? startDate;
 
     if (Number.isNaN(enrollmentStart.getTime())) {
-        throw new Error("Invalid enrollment start date");
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Invalid enrollment start date"
+        );
     }
 
     if (Number.isNaN(enrollmentEnd.getTime())) {
-        throw new Error("Invalid enrollment end date");
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Invalid enrollment end date"
+        );
     }
 
     if (enrollmentStart > enrollmentEnd) {
-        throw new Error("Enrollment end date must be greater than enrollment start date");
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Enrollment end date must be greater than enrollment start date"
+        );
     }
 
     // =========================
-    // 3?? Capacity Validation
+    // 3️⃣ Capacity Validation
     // =========================
-    if (!payload.capacity || payload.capacity <= 0) {
-        throw new Error("Capacity must be greater than 0");
+    const capacity = Number(payload.capacity ?? payload.maxStudents);
+
+    if (!Number.isFinite(capacity) || capacity <= 0) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Capacity must be greater than 0"
+        );
     }
 
     // =========================
-    // 4?? Price Validation
+    // 4️⃣ Price Validation
     // =========================
     if (payload.price && payload.price < 0) {
-        throw new Error("Price cannot be negative");
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Price cannot be negative"
+        );
     }
 
     if (
@@ -69,16 +110,22 @@ const createBatch = async (payload: any) => {
         payload.price &&
         payload.discountPrice > payload.price
     ) {
-        throw new Error("Discount price cannot be greater than price");
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Discount price cannot be greater than price"
+        );
     }
 
     // =========================
-    // 5?? Generate Unique Slug
+    // 5️⃣ Generate Unique Slug
     // =========================
     const batchName = payload.name ?? payload.title;
 
     if (!batchName || typeof batchName !== "string") {
-        throw new Error("Batch name is required");
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Batch name is required"
+        );
     }
 
     const baseSlug = batchName
@@ -95,7 +142,7 @@ const createBatch = async (payload: any) => {
     }
 
     // =========================
-    // 6?? Create Batch
+    // 6️⃣ Create Batch
     // =========================
     const batch = await prisma.batch.create({
         data: {
@@ -106,7 +153,7 @@ const createBatch = async (payload: any) => {
             enrollmentEnd,
             startDate,
             endDate,
-            maxStudents: payload.capacity,
+            maxStudents: capacity,
             price: payload.price ?? 0,
             status: payload.status ?? BatchStatus.UPCOMING,
         },
@@ -117,7 +164,6 @@ const createBatch = async (payload: any) => {
 
     return batch;
 };
-
 
 const getAllBatches = async () => {
     return prisma.batch.findMany({

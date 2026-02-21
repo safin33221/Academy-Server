@@ -9,6 +9,7 @@ import { string } from "zod";
 ========================= */
 const createBatch = catchAsync(
     async (req, res) => {
+        console.log(req.body);
         const result = await BatchService.createBatch(req.body);
 
         sendResponse(res, {
