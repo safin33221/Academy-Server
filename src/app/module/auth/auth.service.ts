@@ -66,6 +66,14 @@ const login = async (payload: ILoginPayload) => {
     if (!isPasswordMatched) {
         throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid credentials");
     }
+    await prisma.user.update({
+        where: {
+            id: user.id, // or email: userEmail
+        },
+        data: {
+            lastLoginAt: new Date(),
+        },
+    });
 
     const accessToken = generateToken(
         { id: user.id, role: user.role },

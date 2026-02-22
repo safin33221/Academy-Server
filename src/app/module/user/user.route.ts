@@ -3,12 +3,11 @@ import { UserController } from "./user.controller.js";
 
 import {
     getAllUsersZodSchema,
-    getSingleUserZodSchema,
-    updateUserZodSchema,
-    deleteUserZodSchema,
+    getSingleUserZodSchema
 } from "./user.validation.js";
 import validateRequest from "../../middleware/validateRequest.js";
 import auth from "../../middleware/auth.js";
+import { fileUploader } from "../../helper/fileUploader.js";
 
 const router: Router = Router();
 
@@ -35,6 +34,7 @@ router.get(
 router.patch(
     "/:id",
     // validateRequest(updateUserZodSchema),
+    fileUploader.upload.single("file"),
     UserController.updateUser
 );
 
