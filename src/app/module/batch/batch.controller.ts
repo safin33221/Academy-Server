@@ -10,7 +10,7 @@ import { string } from "zod";
 const createBatch = catchAsync(
     async (req, res) => {
 
-        const result = await BatchService.createBatch(req);
+        const result = await BatchService.createBatch(req.body);
 
         sendResponse(res, {
             status: httpCode.CREATED,

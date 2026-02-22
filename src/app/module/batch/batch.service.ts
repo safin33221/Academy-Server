@@ -4,6 +4,7 @@ import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";
 
 const createBatch = async (payload: any) => {
+    console.log({ payload });
     // =========================
     // 1️⃣ Validate Course Exists
     // =========================
