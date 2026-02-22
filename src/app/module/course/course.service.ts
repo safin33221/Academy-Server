@@ -282,10 +282,7 @@ const deleteCourse = async (id: string) => {
 };
 
 const approveCourse = async (id: string) => {
-    return prisma.course.update({
-        where: { id },
-        data: { approved: true },
-    });
+    return
 };
 
 export const CourseService = {
