@@ -266,7 +266,17 @@ const getSingleCourse = async (slug: string) => {
         },
     });
 };
+const MyCourses = async (userId: string) => {
+    console.log(userId);
+    const courses = await prisma.enrollment.findMany({
+        where: { userId },
+        include: {
+            course: true, // requires relation in schema
+        },
+    });
 
+    return courses
+};
 const updateCourse = async (id: string, payload: any) => {
     return prisma.course.update({
         where: { id },
@@ -292,4 +302,5 @@ export const CourseService = {
     updateCourse,
     deleteCourse,
     approveCourse,
+    MyCourses
 };

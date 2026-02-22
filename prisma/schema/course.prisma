@@ -32,6 +32,7 @@ model Course {
     faqs         FAQ[]
     batches      Batch[]
     isDeleted    Boolean       @default(false)
+    enrollments  Enrollment[]
 }
 
 // ================= CURRICULUM =================
