@@ -6,6 +6,7 @@ import validateRequest from "../../middleware/validateRequest.js";
 import { BatchController } from "./batch.controller.js";
 
 import { UserRole } from "@prisma/client";
+import { fileUploader } from "../../helper/fileUploader.js";
 
 const router = Router();
 
@@ -17,7 +18,6 @@ const router = Router();
 router.post(
     "/",
     auth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    // validateRequest(batchValidation.createBatchZodSchema),
     BatchController.createBatch
 );
 

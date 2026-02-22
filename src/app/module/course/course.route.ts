@@ -6,6 +6,7 @@ import { CourseController } from "./course.controller.js";
 import { UserRole } from "@prisma/client";
 import validateRequest from "../../middleware/validateRequest.js";
 import { courseValidation } from "./course.validation.js";
+import { fileUploader } from "../../helper/fileUploader.js";
 
 
 const router = Router();
@@ -13,8 +14,8 @@ const router = Router();
 // Instructor
 router.post(
     "/",
-    // auth(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    // validateRequest(courseValidation.createCourseZodSchema),
+    auth(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+    fileUploader.upload.single("file"),
     CourseController.createCourse
 );
 
@@ -24,9 +25,9 @@ router.patch(
     CourseController.updateCourse
 );
 
-router.delete(
-    "/:id",
-    // auth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+router.patch(
+    "/soft-delete/:id",
+    auth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
     CourseController.deleteCourse
 );
 

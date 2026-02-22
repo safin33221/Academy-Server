@@ -128,7 +128,7 @@ const createBatch = async (payload: any) => {
         );
     }
 
-    const baseSlug = batchName
+    const baseSlug = course.title
         .toLowerCase()
         .trim()
         .replace(/\s+/g, "-")
@@ -176,14 +176,16 @@ const getAllBatches = async () => {
     });
 };
 const getSingleBatch = async (id: string) => {
-    return prisma.batch.findUnique({
-        where: { id },
+
+    const result = await prisma.batch.findUnique({
+        where: { slug: id },
 
         include: {
             course: true,
         },
 
     });
+    return result
 };
 
 
