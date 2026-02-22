@@ -22,5 +22,7 @@ model User {
     createdAt   DateTime  @default(now())
     updatedAt   DateTime  @updatedAt
 
-    reviews Review[]
+    reviews     Review[]
+    enrollments Enrollment[]
+    orders      Order[]
 }
