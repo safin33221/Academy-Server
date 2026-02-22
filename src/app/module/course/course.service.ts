@@ -3,13 +3,43 @@ import prisma from "../../../lib/prisma.js";
 import { paginationHelper } from "../../helper/paginationHelper.js";
 import { IOptions } from "../../interface/pagination.js";
 import { courseSearchableFields } from "./course.constant.js";
+import { fileUploader } from "../../helper/fileUploader.js";
 
 
-export const createCourse = async (payload: any) => {
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+const normalizeArrayField = (value: unknown) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== "string") return [];
+
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+        const parsed = JSON.parse(trimmed);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+};
+
+const toNumber = (value: any): number | null => {
+    if (value === undefined || value === null || value === "") return null;
+    const num = Number(value);
+    return isNaN(num) ? null : num;
+};
+
+const toBoolean = (value: any): boolean => {
+    return value === "true" || value === true;
+};
+
+export const createCourse = async (req: any) => {
+    const file = req.file;
+    const payload = req.body;
+
     // =========================
     // 1️⃣ Generate Unique Slug
     // =========================
-    console.log({ payload });
     const baseSlug = payload.title
         .toLowerCase()
         .trim()
@@ -24,75 +54,100 @@ export const createCourse = async (payload: any) => {
     }
 
     // =========================
-    // 2️⃣ Meta Title
+    // 2️⃣ Upload Image
     // =========================
+    let imageUrl: string | null = null;
 
-
+    if (file) {
+        const uploaded = await fileUploader.uploadToCloudinary(file);
+        imageUrl = uploaded.secure_url;
+    }
 
     // =========================
-    // 3️⃣ Access & Price Validation
+    // 3️⃣ Normalize Scalars
     // =========================
+    const price = toNumber(payload.price);
+    const discountPrice = toNumber(payload.discountPrice);
+    const duration = toNumber(payload.duration);
+    const totalClasses = toNumber(payload.totalClasses);
 
+    const isPremium = toBoolean(payload.isPremium);
+    const isFeatured = toBoolean(payload.isFeatured);
+
+    // =========================
+    // 4️⃣ Access & Price Validation
+    // =========================
     if (payload.access === "FREE") {
-        payload.price = 0;
+        if (price !== null && price !== 0) {
+            throw new Error("Free course must have price 0");
+        }
     }
 
     if (payload.access === "PAID") {
-        if (!payload.price || payload.price <= 0) {
+        if (!price || price <= 0) {
             throw new Error("Paid course must have price greater than 0");
         }
     }
 
     if (
-        payload.discountPrice &&
-        payload.price &&
-        payload.discountPrice > payload.price
+        discountPrice !== null &&
+        price !== null &&
+        discountPrice > price
     ) {
         throw new Error("Discount price cannot be greater than price");
     }
 
     // =========================
-    // 4️⃣ Extract Nested Data
+    // 5️⃣ Extract Nested Fields
     // =========================
-
-    const {
-        curriculum = [],
-        learnings = [],
-        faqs = [],
-        ...courseData
-    } = payload;
+    const normalizedCurriculum = normalizeArrayField(payload.curriculum);
+    const normalizedLearnings = normalizeArrayField(payload.learnings);
+    const normalizedFaqs = normalizeArrayField(payload.faqs);
 
     // =========================
-    // 5️⃣ Create Course (Nested)
+    // 6️⃣ Create Course
     // =========================
-
     const course = await prisma.course.create({
         data: {
-            ...courseData,
+            title: payload.title,
             slug,
+            shortDescription: payload.shortDescription,
+            fullDescription: payload.fullDescription,
+            level: payload.level,
+            category: payload.category || "",
 
+            price: price ?? 0,
+            discountPrice,
+            duration: duration ?? 0,
+            totalClasses: totalClasses ?? 0,
 
-            curriculum: curriculum.length
+            isPremium,
+            isFeatured,
+            thumbnail: imageUrl,
+
+            curriculum: normalizedCurriculum.length
                 ? {
-                    create: curriculum.map((item: any, index: number) => ({
-                        title: item.title,
+                    create: normalizedCurriculum.map(
+                        (item: any, index: number) => ({
+                            title: item.title,
+                            content: item.content,
+                            order: item.order ?? index + 1,
+                        })
+                    ),
+                }
+                : undefined,
+
+            learnings: normalizedLearnings.length
+                ? {
+                    create: normalizedLearnings.map((item: any) => ({
                         content: item.content,
-                        order: item.order ?? index + 1,
                     })),
                 }
                 : undefined,
 
-            learnings: learnings.length
+            faqs: normalizedFaqs.length
                 ? {
-                    create: learnings.map((item: any) => ({
-                        content: item.content,
-                    })),
-                }
-                : undefined,
-
-            faqs: faqs.length
-                ? {
-                    create: faqs.map((item: any) => ({
+                    create: normalizedFaqs.map((item: any) => ({
                         question: item.question,
                         answer: item.answer,
                     })),
@@ -163,7 +218,7 @@ const getAllCourses = async (options: IOptions, params: any) => {
 
     const [data, total] = await Promise.all([
         prisma.course.findMany({
-            where: whereCondition,
+            where: { ...whereCondition, isDeleted: false },
             skip,
             take: limit,
 

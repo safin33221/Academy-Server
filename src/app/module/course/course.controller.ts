@@ -10,7 +10,7 @@ const createCourse = catchAsync(
 
 
         const result = await CourseService.createCourse(
-            req.body,
+            req,
 
         );
 
