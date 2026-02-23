@@ -75,7 +75,7 @@ const updateCourse = catchAsync(
     async (req, res) => {
         const result = await CourseService.updateCourse(
             req.params.id as string,
-            req.body
+            req
         );
 
         sendResponse(res, {

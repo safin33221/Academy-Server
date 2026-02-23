@@ -21,7 +21,7 @@ router.post(
 
 router.patch(
     "/:id",
-    // auth(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+    fileUploader.upload.single("file"),
     CourseController.updateCourse
 );
 
