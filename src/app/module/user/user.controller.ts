@@ -5,7 +5,6 @@ import sendResponse from "../../shared/sendResponse.js";
 import pick from "../../utils/pick.js";
 import { userFilterableField } from "./user.constant.js";
 import { Request, Response } from "express";
-import { JwtPayload } from "jsonwebtoken";
 
 
 const getMe = catchAsync(async (req: Request, res: Response) => {
@@ -20,10 +19,10 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
         data: result,
     });
 })
-const getAllUsers = catchAsync(async (req, res) => {
+const getAllUsers = catchAsync(async (req: Request, res: Response) => {
     const options = pick(req.query, ['limit', 'page', 'sortBy', 'sortOrder'])
     const filters = pick(req.query, userFilterableField)
-    console.log({ filters, options });
+
 
     const result = await UserService.getAllUsers(options, filters);
 
@@ -38,7 +37,7 @@ const getAllUsers = catchAsync(async (req, res) => {
 
 
 const getSingleUser = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         const user = await UserService.getSingleUser(req.params.id as string);
 
         sendResponse(res, {
@@ -51,7 +50,7 @@ const getSingleUser = catchAsync(
 );
 
 const updateUser = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
 
         const user = await UserService.updateUser(req.params.id as string, req);
 
@@ -65,7 +64,7 @@ const updateUser = catchAsync(
 );
 
 const toggleUserBlockStatus = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         const result = await UserService.toggleUserBlockStatus(req.params.id as string);
 
         sendResponse(res, {

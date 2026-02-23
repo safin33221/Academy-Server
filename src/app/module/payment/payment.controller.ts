@@ -40,7 +40,7 @@ const initiatePayment = catchAsync(
 const paymentSuccess = catchAsync(
     async (req: Request, res: Response) => {
         const payload = getSslPayload(req);
-        console.log(payload);
+
 
         const validationData = await PaymentService.validatePayment(payload);
 

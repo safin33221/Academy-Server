@@ -1,6 +1,3 @@
-
-
-
 import prisma from "../../../lib/prisma.js";
 import { paginationHelper } from "../../helper/paginationHelper.js";
 import { IOptions } from "../../interface/pagination.js";
@@ -148,11 +145,11 @@ const updateUser = async (
     if (file) {
         const uploaded =
             await fileUploader.uploadToCloudinary(file);
-        console.log({ uploaded });
+
         imageUrl =
             uploaded.secure_url;
     }
-    console.log({ imageUrl });
+
 
 
 

@@ -4,10 +4,6 @@ import { paginationHelper } from "../../helper/paginationHelper.js";
 import { IOptions } from "../../interface/pagination.js";
 import { courseSearchableFields } from "./course.constant.js";
 import { fileUploader } from "../../helper/fileUploader.js";
-import { includes } from "zod";
-
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 const normalizeArrayField = (value: unknown) => {
     if (Array.isArray(value)) return value;

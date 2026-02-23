@@ -25,7 +25,7 @@ const verifyOtp = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-export const OtpController: any = {
+export const OtpController = {
     sendOtp,
     verifyOtp,
 };

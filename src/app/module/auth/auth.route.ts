@@ -23,4 +23,4 @@ router.post("/login",
 router.post("/refresh-token",
     AuthController.refreshToken);
 
-export const AuthRoutes = router;
+export const AuthRoutes: Router = router;

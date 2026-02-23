@@ -1,12 +1,8 @@
-
-import { Router } from "express";
-
+import { Router } from "express"
 import auth from "../../middleware/auth.js";
 import { CourseController } from "./course.controller.js";
-import { UserRole } from "@prisma/client";
-import validateRequest from "../../middleware/validateRequest.js";
-import { courseValidation } from "./course.validation.js";
 import { fileUploader } from "../../helper/fileUploader.js";
+import { UserRole } from "@prisma/client";
 
 
 const router = Router();

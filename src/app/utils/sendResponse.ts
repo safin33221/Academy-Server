@@ -1,6 +1,10 @@
-import type { Response } from "express"
+import type { Response } from "express";
 
-const sendResponse = <T>(res: Response, jsonData: {
+interface SendableResponse {
+    status(code: number): Response;
+}
+
+const sendResponse = <T>(res: SendableResponse, jsonData: {
     status: number,
     success: boolean,
     message: string,

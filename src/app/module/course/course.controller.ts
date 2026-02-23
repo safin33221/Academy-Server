@@ -4,9 +4,10 @@ import sendResponse from "../../shared/sendResponse.js";
 import httpCode from "../../utils/httpStatus.js";
 import pick from "../../utils/pick.js";
 import { courseFilterableFields } from "./course.constant.js";
+import { Request, Response } from "express";
 
 const createCourse = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
 
 
         const result = await CourseService.createCourse(
@@ -25,7 +26,7 @@ const createCourse = catchAsync(
 
 const getAllCourses = catchAsync(
 
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         const options = pick(req.query, ['limit', 'page', 'sortBy', 'sortOrder'])
         const filter = pick(req.query, courseFilterableFields)
         const result = await CourseService.getAllCourses(options, filter);
@@ -41,7 +42,7 @@ const getAllCourses = catchAsync(
 );
 
 const getSingleCourse = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         const result = await CourseService.getSingleCourse(
             req.params.id as string
         );
@@ -55,9 +56,9 @@ const getSingleCourse = catchAsync(
     }
 );
 const MyCourses = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         const id = req?.user?.id
-        console.log({ id });
+
         const result = await CourseService.MyCourses(
             id as string
         );
@@ -72,7 +73,7 @@ const MyCourses = catchAsync(
 );
 
 const updateCourse = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         const result = await CourseService.updateCourse(
             req.params.id as string,
             req
@@ -88,7 +89,7 @@ const updateCourse = catchAsync(
 );
 
 const deleteCourse = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         await CourseService.deleteCourse(req.params.id as string);
 
         sendResponse(res, {
@@ -100,7 +101,7 @@ const deleteCourse = catchAsync(
 );
 
 const approveCourse = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         const result = await CourseService.approveCourse(
             req.params.id as string
         );

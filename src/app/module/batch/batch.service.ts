@@ -7,7 +7,7 @@ import { fileUploader } from "../../helper/fileUploader.js";
 const createBatch = async (req: any) => {
     const file = req.file
     const payload = req.body
-    console.log({ file });
+
     // =========================
     // 1️⃣ Validate Course Exists
     // =========================
@@ -156,7 +156,7 @@ const createBatch = async (req: any) => {
         imageUrl = uploaded.secure_url;
 
     }
-    console.log({ imageUrl });
+
     // =========================
     // 6️⃣ Create Batch
     // =========================
