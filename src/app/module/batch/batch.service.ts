@@ -170,6 +170,7 @@ const getAllBatches = async () => {
     return prisma.batch.findMany({
         include: {
             course: true,
+
         },
         orderBy: {
             createdAt: "desc",
@@ -203,6 +204,18 @@ const getSingleBatch = async (slug: string) => {
                     },
                 },
             },
+            enrollments: {
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            profilePhoto: true,
+                        },
+                    }
+                }
+            }
         },
     });
 

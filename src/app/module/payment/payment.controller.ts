@@ -90,10 +90,27 @@ const paymentIPN = catchAsync(
     }
 );
 
+
+const getMyPaymentHistory = catchAsync(
+    async (req: Request, res: Response) => {
+        const userId = req?.user?.id
+        const result = await PaymentService.getMyPaymentHistory(userId as string);
+
+        sendResponse(res, {
+            status: httpCode.OK,
+            success: true,
+            message: "Payment History retrieve successfully",
+            data: result,
+        });
+    }
+);
+
 export const PaymentController = {
     initiatePayment,
     paymentSuccess,
     paymentFail,
     paymentCancel,
     paymentIPN,
+    getMyPaymentHistory
+
 };

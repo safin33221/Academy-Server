@@ -6,6 +6,7 @@ import prisma from "../../../lib/prisma.js";
 import { SSLService } from "../sslCommerz/sslCommerz.service.js";
 import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";
+import { tuple } from "zod";
 
 const initiatePayment = async (userId: string, payload: any) => {
     const { batchId } = payload;
@@ -197,10 +198,28 @@ const validatePayment = async (sslPayload: any) => {
     return validationData;
 };
 
+
+const getMyPaymentHistory = async (id: string) => {
+    const result = await prisma.order.findMany({
+        where: { userId: id },
+        include: {
+            payment: true,
+            batch: {
+                include: {
+                    course: true
+                }
+            }
+        }
+
+    })
+    return result
+}
+
 export const PaymentService = {
     initiatePayment,
     markPaymentFailed,
     markPaymentCancelled,
-    validatePayment
+    validatePayment,
+    getMyPaymentHistory
 };
 
