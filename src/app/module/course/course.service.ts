@@ -334,7 +334,6 @@ export const updateCourse = async (id: string, req: any) => {
         const uploaded = await fileUploader.uploadToCloudinary(file);
         imageUrl = uploaded.secure_url;
 
-        // Optional: delete old image from Cloudinary here
     }
 
     // =========================

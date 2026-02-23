@@ -1,7 +1,6 @@
 import { Router } from "express";
 
 import auth from "../../middleware/auth.js";
-import validateRequest from "../../middleware/validateRequest.js";
 
 import { BatchController } from "./batch.controller.js";
 
@@ -18,6 +17,7 @@ const router = Router();
 router.post(
     "/",
     auth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+    fileUploader.upload.single("file"),
     BatchController.createBatch
 );
 

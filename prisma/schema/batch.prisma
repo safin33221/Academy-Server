@@ -6,12 +6,13 @@ enum BatchStatus {
 }
 
 model Batch {
-    id   String @id @default(uuid())
-    name String
-    slug String @unique
-
-    courseId String
-    course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+    id        String  @id @default(uuid())
+    name      String
+    slug      String  @unique
+    thumbnail String?
+    videoURL  String?
+    courseId  String
+    course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
     enrollmentStart DateTime
     enrollmentEnd   DateTime

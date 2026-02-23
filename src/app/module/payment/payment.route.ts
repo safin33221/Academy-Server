@@ -6,8 +6,12 @@ import { UserRole } from "@prisma/client";
 
 const router = express.Router();
 
-router.get("/my-payment-history", auth(UserRole.USER, UserRole.STUDENT), PaymentController.getMyPaymentHistory);
-router.post("/initiate", auth(), PaymentController.initiatePayment);
+router.get("/my-payment-history",
+    auth(UserRole.USER, UserRole.STUDENT),
+    PaymentController.getMyPaymentHistory);
+router.post("/initiate",
+    auth(UserRole.USER, UserRole.STUDENT),
+    PaymentController.initiatePayment);
 
 router.post("/success", PaymentController.paymentSuccess);
 router.get("/success", PaymentController.paymentSuccess);
