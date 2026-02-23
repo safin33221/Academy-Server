@@ -78,6 +78,21 @@ const env = {
         CLOUDINARY_API_KEY: required("CLOUDINARY_API_KEY"),
         CLOUDINARY_API_SECRET: required("CLOUDINARY_API_SECRET")
     },
+    SSL: {
+        SSL_STORE_ID: required("SSL_STORE_ID"),
+        SSL_STORE_PASS: required("SSL_STORE_PASS"),
+        SSL_PAYMENT_API: required("SSL_PAYMENT_API"),
+        SSL_VALIDATION_API: required("SSL_VALIDATION_API"),
+        SSL_IPN_URL: required("SSL_IPN_URL"),
+
+        SSL_SUCCESS_BACKEND_URL: required("SSL_SUCCESS_BACKEND_URL"),
+        SSL_FAIL_BACKEND_URL: required("SSL_FAIL_BACKEND_URL"),
+        SSL_CANCEL_BACKEND_URL: required("SSL_CANCEL_BACKEND_URL"),
+
+        SSL_SUCCESS_FRONTEND_URL: required("SSL_SUCCESS_FRONTEND_URL"),
+        SSL_FAIL_FRONTEND_URL: required("SSL_FAIL_FRONTEND_URL"),
+        SSL_CANCEL_FRONTEND_URL: required("SSL_CANCEL_FRONTEND_URL"),
+    },
     /* File Upload */
     UPLOAD_DIR: optional("UPLOAD_DIR") || "uploads",
     MAX_FILE_SIZE: toNumber("MAX_FILE_SIZE", 10 * 1024 * 1024),

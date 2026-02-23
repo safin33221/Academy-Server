@@ -27,7 +27,8 @@ model Batch {
 
     status BatchStatus @default(UPCOMING)
 
-    // enrollments Enrollment[]
+    enrollments Enrollment[]
+    orders      Order[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt

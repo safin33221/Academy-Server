@@ -4,6 +4,7 @@ import { paginationHelper } from "../../helper/paginationHelper.js";
 import { IOptions } from "../../interface/pagination.js";
 import { courseSearchableFields } from "./course.constant.js";
 import { fileUploader } from "../../helper/fileUploader.js";
+import { includes } from "zod";
 
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -266,12 +267,184 @@ const getSingleCourse = async (slug: string) => {
         },
     });
 };
-
-const updateCourse = async (id: string, payload: any) => {
-    return prisma.course.update({
-        where: { id },
-        data: payload,
+const MyCourses = async (userId: string) => {
+    console.log(userId);
+    const courses = await prisma.enrollment.findMany({
+        where: { userId },
+        include: {
+            batch: {
+                include: {
+                    course: true
+                }
+            }, // requires relation in schema
+        },
     });
+
+    return courses
+};
+export const updateCourse = async (id: string, req: any) => {
+    const file = req.file;
+    const payload = req.body;
+
+
+    // =========================
+    // 1️⃣ Get Existing Course
+    // =========================
+    const existingCourse = await prisma.course.findUnique({
+        where: { id },
+    });
+
+    if (!existingCourse) {
+        throw new Error("Course not found");
+    }
+
+    // =========================
+    // 2️⃣ Generate Unique Slug (if title changed)
+    // =========================
+    let slug = existingCourse.slug;
+
+    if (payload.title && payload.title !== existingCourse.title) {
+        const baseSlug = payload.title
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, "-")
+            .replace(/[^\w-]+/g, "");
+
+        slug = baseSlug;
+        let counter = 1;
+
+        while (
+            await prisma.course.findFirst({
+                where: {
+                    slug,
+                    NOT: { id },
+                },
+            })
+        ) {
+            slug = `${baseSlug}-${counter++}`;
+        }
+    }
+
+    // =========================
+    // 3️⃣ Upload Image (Optional Replace)
+    // =========================
+    let imageUrl = existingCourse.thumbnail;
+
+    if (file) {
+        const uploaded = await fileUploader.uploadToCloudinary(file);
+        imageUrl = uploaded.secure_url;
+
+        // Optional: delete old image from Cloudinary here
+    }
+
+    // =========================
+    // 4️⃣ Normalize Scalars
+    // =========================
+    const price = toNumber(payload.price);
+    const discountPrice = toNumber(payload.discountPrice);
+    const duration = toNumber(payload.duration);
+    const totalClasses = toNumber(payload.totalClasses);
+
+    const isPremium = toBoolean(payload.isPremium);
+    const isFeatured = toBoolean(payload.isFeatured);
+
+    // =========================
+    // 5️⃣ Access & Price Validation
+    // =========================
+    if (payload.access === "FREE") {
+        if (price !== null && price !== 0) {
+            throw new Error("Free course must have price 0");
+        }
+    }
+
+    if (payload.access === "PAID") {
+        if (!price || price <= 0) {
+            throw new Error("Paid course must have price greater than 0");
+        }
+    }
+
+    if (
+        discountPrice !== null &&
+        price !== null &&
+        discountPrice > price
+    ) {
+        throw new Error("Discount price cannot be greater than price");
+    }
+
+    // =========================
+    // 6️⃣ Normalize Nested Fields
+    // =========================
+    const normalizedCurriculum = normalizeArrayField(payload.curriculum);
+    const normalizedLearnings = normalizeArrayField(payload.learnings);
+    const normalizedFaqs = normalizeArrayField(payload.faqs);
+
+    // =========================
+    // 7️⃣ Update Course (Transaction Safe)
+    // =========================
+    const updatedCourse = await prisma.$transaction(async (tx) => {
+        // Delete old nested data
+        await tx.curriculum.deleteMany({ where: { courseId: id } });
+        await tx.learning.deleteMany({ where: { courseId: id } });
+        await tx.fAQ.deleteMany({ where: { courseId: id } });
+
+        // Update main course
+        return tx.course.update({
+            where: { id },
+            data: {
+                title: payload.title,
+                slug,
+                shortDescription: payload.shortDescription,
+                fullDescription: payload.fullDescription,
+                level: payload.level,
+                category: payload.category || "",
+
+                price: price ?? 0,
+                discountPrice,
+                duration: duration ?? 0,
+                totalClasses: totalClasses ?? 0,
+
+                isPremium,
+                isFeatured,
+                thumbnail: imageUrl,
+
+                curriculum: normalizedCurriculum.length
+                    ? {
+                        create: normalizedCurriculum.map(
+                            (item: any, index: number) => ({
+                                title: item.title,
+                                content: item.content,
+                                order: item.order ?? index + 1,
+                            })
+                        ),
+                    }
+                    : undefined,
+
+                learnings: normalizedLearnings.length
+                    ? {
+                        create: normalizedLearnings.map((item: any) => ({
+                            content: item.content,
+                        })),
+                    }
+                    : undefined,
+
+                faqs: normalizedFaqs.length
+                    ? {
+                        create: normalizedFaqs.map((item: any) => ({
+                            question: item.question,
+                            answer: item.answer,
+                        })),
+                    }
+                    : undefined,
+            },
+            include: {
+                curriculum: true,
+                learnings: true,
+                faqs: true,
+            },
+        });
+    });
+
+    return updatedCourse;
 };
 
 const deleteCourse = async (id: string) => {
@@ -292,4 +465,5 @@ export const CourseService = {
     updateCourse,
     deleteCourse,
     approveCourse,
+    MyCourses
 };

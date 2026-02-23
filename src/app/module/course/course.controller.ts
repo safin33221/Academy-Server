@@ -54,12 +54,28 @@ const getSingleCourse = catchAsync(
         });
     }
 );
+const MyCourses = catchAsync(
+    async (req, res) => {
+        const id = req?.user?.id
+        console.log({ id });
+        const result = await CourseService.MyCourses(
+            id as string
+        );
+
+        sendResponse(res, {
+            status: httpCode.OK,
+            success: true,
+            message: "Course retrieved successfully",
+            data: result,
+        });
+    }
+);
 
 const updateCourse = catchAsync(
     async (req, res) => {
         const result = await CourseService.updateCourse(
             req.params.id as string,
-            req.body
+            req
         );
 
         sendResponse(res, {
@@ -105,4 +121,5 @@ export const CourseController = {
     updateCourse,
     deleteCourse,
     approveCourse,
+    MyCourses
 };

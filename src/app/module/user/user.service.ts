@@ -25,7 +25,9 @@ const getMe = async (id: string) => {
             updatedAt: true,
             isVerified: true,
             lastLoginAt: true,
-            profilePhoto: true
+            profilePhoto: true,
+            isActive: true,
+            isDeleted: true
 
         },
     });

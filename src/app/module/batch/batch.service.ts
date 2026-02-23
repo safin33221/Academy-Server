@@ -170,25 +170,57 @@ const getAllBatches = async () => {
     return prisma.batch.findMany({
         include: {
             course: true,
+
         },
         orderBy: {
             createdAt: "desc",
         },
     });
 };
-const getSingleBatch = async (id: string) => {
-
+const getSingleBatch = async (slug: string) => {
     const result = await prisma.batch.findUnique({
-        where: { slug: id },
+        where: { slug },
 
         include: {
-            course: true,
+            course: {
+                include: {
+                    curriculum: {
+                        orderBy: { order: "asc" },
+                    },
+                    learnings: true,
+                    requirements: true,
+                    faqs: true,
+                    reviews: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+
+                                },
+                            },
+                        },
+                        orderBy: { createdAt: "desc" },
+                    },
+                },
+            },
+            enrollments: {
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            profilePhoto: true,
+                        },
+                    }
+                }
+            }
         },
-
     });
-    return result
-};
 
+    return result;
+};
 
 const updateBatch = async (id: string, payload: any) => {
     const batch = await prisma.batch.findUnique({

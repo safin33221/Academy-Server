@@ -21,7 +21,7 @@ router.post(
 
 router.patch(
     "/:id",
-    // auth(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPER_ADMIN),
+    fileUploader.upload.single("file"),
     CourseController.updateCourse
 );
 
@@ -32,8 +32,10 @@ router.patch(
 );
 
 // Public
-router.get("/", CourseController.getAllCourses);
+router.get("/my-courses", auth(UserRole.STUDENT), CourseController.MyCourses);
 router.get("/:id", CourseController.getSingleCourse);
+router.get("/", CourseController.getAllCourses);
+
 
 // Admin
 router.patch(

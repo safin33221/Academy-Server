@@ -1,0 +1,43 @@
+enum PaymentStatus {
+    PENDING
+    PAID
+    FAILED
+    CANCELLED
+}
+
+model Order {
+    id            String        @id @default(uuid())
+    userId        String
+    batchId       String
+    amount        Float
+    transactionId String        @unique
+    status        PaymentStatus @default(PENDING)
+    user          User          @relation(fields: [userId], references: [id])
+    batch         Batch         @relation(fields: [batchId], references: [id])
+    payment       Payment?
+    createdAt     DateTime      @default(now())
+}
+
+model Payment {
+    id      String        @id @default(uuid())
+    orderId String        @unique
+    status  PaymentStatus @default(PENDING)
+
+    gatewayName    String
+    gatewayEventId String? @unique
+    gatewayPayload Json?
+
+    order     Order    @relation(fields: [orderId], references: [id])
+    createdAt DateTime @default(now())
+}
+
+model Enrollment {
+    id      String @id @default(uuid())
+    userId  String
+    batchId String
+
+    user  User  @relation(fields: [userId], references: [id])
+    batch Batch @relation(fields: [batchId], references: [id])
+
+    @@unique([userId, batchId])
+}
