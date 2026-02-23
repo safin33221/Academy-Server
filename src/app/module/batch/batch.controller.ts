@@ -2,15 +2,15 @@ import httpCode from "http-status";
 import catchAsync from "../../utils/catchAsync.js";
 import sendResponse from "../../utils/sendResponse.js";
 import { BatchService } from "./batch.service.js";
-import { string } from "zod";
+import { Request, Response } from "express";
 
 /* =========================
    Create Batch
 ========================= */
 const createBatch = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
 
-        const result = await BatchService.createBatch(req.body);
+        const result = await BatchService.createBatch(req);
 
         sendResponse(res, {
             status: httpCode.CREATED,

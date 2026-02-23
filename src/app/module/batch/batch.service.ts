@@ -2,9 +2,12 @@ import { BatchStatus } from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
 import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";
+import { fileUploader } from "../../helper/fileUploader.js";
 
-const createBatch = async (payload: any) => {
-    console.log({ payload });
+const createBatch = async (req: any) => {
+    const file = req.file
+    const payload = req.body
+    console.log({ file });
     // =========================
     // 1️⃣ Validate Course Exists
     // =========================
@@ -129,19 +132,31 @@ const createBatch = async (payload: any) => {
         );
     }
 
-    const baseSlug = course.title
+    const CourseSlug = course.title
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^\w-]+/g, "");
+    const batchSlug = payload.name
         .toLowerCase()
         .trim()
         .replace(/\s+/g, "-")
         .replace(/[^\w-]+/g, "");
 
-    let slug = baseSlug;
-    let counter = 1;
+    let slug = `${CourseSlug}-${batchSlug}`
 
-    while (await prisma.batch.findUnique({ where: { slug } })) {
-        slug = `${baseSlug}-${counter++}`;
+
+
+
+
+    let imageUrl = null;
+
+    if (file) {
+        const uploaded = await fileUploader.uploadToCloudinary(file);
+        imageUrl = uploaded.secure_url;
+
     }
-
+    console.log({ imageUrl });
     // =========================
     // 6️⃣ Create Batch
     // =========================
@@ -157,6 +172,8 @@ const createBatch = async (payload: any) => {
             maxStudents: capacity,
             price: payload.price ?? 0,
             status: payload.status ?? BatchStatus.UPCOMING,
+            thumbnail: imageUrl,
+            videoURL: payload.videoURL || ""
         },
         include: {
             course: true,
