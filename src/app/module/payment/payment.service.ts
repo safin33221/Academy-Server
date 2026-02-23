@@ -4,37 +4,42 @@ import { v4 as uuidv4 } from "uuid";
 import { PaymentStatus, UserRole } from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
 import { SSLService } from "../sslCommerz/sslCommerz.service.js";
+import ApiError from "../../error/ApiError.js";
+import httpCode from "../../utils/httpStatus.js";
 
 const initiatePayment = async (userId: string, payload: any) => {
-    const { courseId } = payload;
+    const { batchId } = payload;
 
     // 1️⃣ Check course
-    const course = await prisma.course.findUnique({
-        where: { id: courseId },
+    const batch = await prisma.batch.findUnique({
+        where: { id: batchId },
+        include: {
+            course: true
+        }
     });
-    if (!course) throw new Error("Course not found");
+    if (!batch) throw new ApiError(httpCode.NOT_ACCEPTABLE, "Batch not found");
 
     // 2️⃣ Check user
     const user = await prisma.user.findUnique({
         where: { id: userId },
     });
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ApiError(httpCode.NOT_ACCEPTABLE, "User not found");
 
     // 3️⃣ Prevent already enrolled
     const alreadyEnrolled = await prisma.enrollment.findUnique({
         where: {
-            userId_courseId: { userId, courseId },
+            userId_batchId: { userId, batchId },
         },
     });
     if (alreadyEnrolled) {
-        throw new Error("Already enrolled");
+        throw new ApiError(httpCode.NOT_ACCEPTABLE, "Already enrolled");
     }
 
     // 4️⃣ Check if there's existing pending order
     const existingPendingOrder = await prisma.order.findFirst({
         where: {
             userId,
-            courseId,
+            batchId,
             status: PaymentStatus.PENDING,
         },
     });
@@ -60,8 +65,8 @@ const initiatePayment = async (userId: string, payload: any) => {
         const order = await tx.order.create({
             data: {
                 userId,
-                courseId,
-                amount: course.price,
+                batchId,
+                amount: Number(batch.course.discountPrice),
                 transactionId,
                 status: PaymentStatus.PENDING,
             },
@@ -172,7 +177,7 @@ const validatePayment = async (sslPayload: any) => {
         await tx.enrollment.create({
             data: {
                 userId: updatedOrder.userId,
-                courseId: updatedOrder.courseId,
+                batchId: updatedOrder.batchId,
             },
         });
         await tx.user.update({
@@ -180,6 +185,10 @@ const validatePayment = async (sslPayload: any) => {
             data: {
                 role: UserRole.STUDENT
             }
+        })
+        await tx.batch.update({
+            where: { id: updatedOrder.batchId },
+            data: { enrolledCount: { increment: 1 } }
         })
 
         return updatedOrder;

@@ -8,11 +8,12 @@ enum PaymentStatus {
 model Order {
     id            String        @id @default(uuid())
     userId        String
-    courseId      String
+    batchId       String
     amount        Float
     transactionId String        @unique
     status        PaymentStatus @default(PENDING)
     user          User          @relation(fields: [userId], references: [id])
+    batch         Batch         @relation(fields: [batchId], references: [id])
     payment       Payment?
     createdAt     DateTime      @default(now())
 }
@@ -31,12 +32,12 @@ model Payment {
 }
 
 model Enrollment {
-    id       String @id @default(uuid())
-    userId   String
-    courseId String
+    id      String @id @default(uuid())
+    userId  String
+    batchId String
 
-    user   User   @relation(fields: [userId], references: [id])
-    course Course @relation(fields: [courseId], references: [id])
+    user  User  @relation(fields: [userId], references: [id])
+    batch Batch @relation(fields: [batchId], references: [id])
 
-    @@unique([userId, courseId])
+    @@unique([userId, batchId])
 }

@@ -4,6 +4,7 @@ import { paginationHelper } from "../../helper/paginationHelper.js";
 import { IOptions } from "../../interface/pagination.js";
 import { courseSearchableFields } from "./course.constant.js";
 import { fileUploader } from "../../helper/fileUploader.js";
+import { includes } from "zod";
 
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -271,7 +272,11 @@ const MyCourses = async (userId: string) => {
     const courses = await prisma.enrollment.findMany({
         where: { userId },
         include: {
-            course: true, // requires relation in schema
+            batch: {
+                include: {
+                    course: true
+                }
+            }, // requires relation in schema
         },
     });
 
