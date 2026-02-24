@@ -28,7 +28,7 @@ const updateBatch = catchAsync(
     async (req, res) => {
         const { id } = req.params;
 
-        const result = await BatchService.updateBatch(id, req.body);
+        const result = await BatchService.updateBatch(id, req);
 
         sendResponse(res, {
             status: httpCode.OK,
