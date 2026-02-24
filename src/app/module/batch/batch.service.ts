@@ -182,6 +182,182 @@ const createBatch = async (req: any) => {
 
     return batch;
 };
+const updateBatch = async (id: string, req: any) => {
+    const payload = req.body;
+    const file = req.file;
+
+    // =========================
+    // 1️⃣ Check Batch Exists
+    // =========================
+    const existingBatch = await prisma.batch.findUnique({
+        where: { id },
+        include: { course: true },
+    });
+
+    if (!existingBatch) {
+        throw new ApiError(httpCode.NOT_FOUND, "Batch not found");
+    }
+
+    // =========================
+    // 2️⃣ Validate Course (if changed)
+    // =========================
+    let courseId = existingBatch.courseId;
+
+    if (payload.courseId && payload.courseId !== existingBatch.courseId) {
+        const course = await prisma.course.findUnique({
+            where: { id: payload.courseId },
+        });
+
+        if (!course) {
+            throw new ApiError(httpCode.NOT_FOUND, "Course not found");
+        }
+
+        courseId = payload.courseId;
+    }
+
+    // =========================
+    // 3️⃣ Date Validation
+    // =========================
+    const startDate = payload.startDate
+        ? new Date(payload.startDate)
+        : existingBatch.startDate;
+
+    const endDate = payload.endDate
+        ? new Date(payload.endDate)
+        : existingBatch.endDate;
+
+    if (Number.isNaN(new Date(startDate).getTime())) {
+        throw new ApiError(httpCode.BAD_REQUEST, "Invalid start date");
+    }
+
+    if (endDate && Number.isNaN(new Date(endDate).getTime())) {
+        throw new ApiError(httpCode.BAD_REQUEST, "Invalid end date");
+    }
+
+    if (endDate && startDate >= endDate) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "End date must be greater than start date"
+        );
+    }
+
+    const enrollmentStart = payload.enrollmentStart
+        ? new Date(payload.enrollmentStart)
+        : existingBatch.enrollmentStart;
+
+    const enrollmentEnd = payload.enrollmentEnd
+        ? new Date(payload.enrollmentEnd)
+        : existingBatch.enrollmentEnd;
+
+    if (enrollmentStart > enrollmentEnd) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Enrollment end date must be greater than enrollment start date"
+        );
+    }
+
+    // =========================
+    // 4️⃣ Capacity Validation
+    // =========================
+    const capacity = payload.maxStudents
+        ? Number(payload.maxStudents)
+        : existingBatch.maxStudents;
+
+    if (!Number.isFinite(capacity) || capacity <= 0) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Capacity must be greater than 0"
+        );
+    }
+
+    // Prevent reducing capacity below enrolled count
+    if (capacity < existingBatch.enrolledCount) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Capacity cannot be less than enrolled students"
+        );
+    }
+
+    // =========================
+    // 5️⃣ Price Validation
+    // =========================
+    const price =
+        payload.price !== undefined
+            ? Number(payload.price)
+            : existingBatch.price;
+
+    if (price! < 0) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Price cannot be negative"
+        );
+    }
+
+    // =========================
+    // 6️⃣ Slug Regeneration (if name changed)
+    // =========================
+    let slug = existingBatch.slug;
+
+    if (payload.name && payload.name !== existingBatch.name) {
+        const course = await prisma.course.findUnique({
+            where: { id: courseId },
+        });
+
+        const courseSlug = course!.title
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, "-")
+            .replace(/[^\w-]+/g, "");
+
+        const batchSlug = payload.name
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, "-")
+            .replace(/[^\w-]+/g, "");
+
+        slug = `${courseSlug}-${batchSlug}`;
+    }
+
+    // =========================
+    // 7️⃣ Image Upload (Replace)
+    // =========================
+    let imageUrl = existingBatch.thumbnail;
+
+    if (file) {
+        const uploaded = await fileUploader.uploadToCloudinary(file);
+        imageUrl = uploaded.secure_url;
+    }
+
+    // =========================
+    // 8️⃣ Update Batch
+    // =========================
+    const updatedBatch = await prisma.batch.update({
+        where: { id },
+        data: {
+            name: payload.name ?? existingBatch.name,
+            slug,
+            courseId,
+            enrollmentStart,
+            enrollmentEnd,
+            startDate,
+            endDate,
+            maxStudents: capacity,
+            price,
+            status: payload.status ?? existingBatch.status,
+            isActive:
+                payload.isActive !== undefined
+                    ? payload.isActive === "true" || payload.isActive === true
+                    : existingBatch.isActive,
+            thumbnail: imageUrl,
+            videoURL: payload.videoURL ?? existingBatch.videoURL,
+        },
+        include: {
+            course: true,
+        },
+    });
+
+    return updatedBatch;
+};
 
 const getAllBatches = async () => {
     return prisma.batch.findMany({
@@ -239,20 +415,7 @@ const getSingleBatch = async (slug: string) => {
     return result;
 };
 
-const updateBatch = async (id: string, payload: any) => {
-    const batch = await prisma.batch.findUnique({
-        where: { id },
-    });
 
-    if (!batch) {
-        throw new Error("Batch not found");
-    }
-
-    return prisma.batch.update({
-        where: { id },
-        data: payload,
-    });
-};
 const deleteBatch = async (id: string) => {
     const batch = await prisma.batch.findFirst({
         where: { id },

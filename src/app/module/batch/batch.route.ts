@@ -25,7 +25,7 @@ router.post(
 router.patch(
     "/:id",
     auth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    // validateRequest(batchValidation.updateBatchZodSchema),
+    fileUploader.upload.single("file"),
     BatchController.updateBatch
 );
 
