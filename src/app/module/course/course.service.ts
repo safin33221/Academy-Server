@@ -4,6 +4,8 @@ import { paginationHelper } from "../../helper/paginationHelper.js";
 import { IOptions } from "../../interface/pagination.js";
 import { courseSearchableFields } from "./course.constant.js";
 import { fileUploader } from "../../helper/fileUploader.js";
+import ApiError from "../../error/ApiError.js";
+import httpCode from "../../utils/httpStatus.js";
 
 const normalizeArrayField = (value: unknown) => {
     if (Array.isArray(value)) return value;
@@ -76,13 +78,13 @@ export const createCourse = async (req: any) => {
     // =========================
     if (payload.access === "FREE") {
         if (price !== null && price !== 0) {
-            throw new Error("Free course must have price 0");
+            throw new ApiError(httpCode.NOT_ACCEPTABLE, "Free course must have price 0");
         }
     }
 
     if (payload.access === "PAID") {
         if (!price || price <= 0) {
-            throw new Error("Paid course must have price greater than 0");
+            throw new ApiError(httpCode.NOT_ACCEPTABLE, "Paid course must have price greater than 0");
         }
     }
 
@@ -91,7 +93,7 @@ export const createCourse = async (req: any) => {
         price !== null &&
         discountPrice > price
     ) {
-        throw new Error("Discount price cannot be greater than price");
+        throw new ApiError(httpCode.NOT_ACCEPTABLE, "Discount price cannot be greater than price");
     }
 
     // =========================
@@ -291,7 +293,7 @@ export const updateCourse = async (id: string, req: any) => {
     });
 
     if (!existingCourse) {
-        throw new Error("Course not found");
+        throw new ApiError(httpCode.NOT_ACCEPTABLE, "Course not found");
     }
 
     // =========================
@@ -348,13 +350,13 @@ export const updateCourse = async (id: string, req: any) => {
     // =========================
     if (payload.access === "FREE") {
         if (price !== null && price !== 0) {
-            throw new Error("Free course must have price 0");
+            throw new ApiError(httpCode.NOT_ACCEPTABLE, "Free course must have price 0");
         }
     }
 
     if (payload.access === "PAID") {
         if (!price || price <= 0) {
-            throw new Error("Paid course must have price greater than 0");
+            throw new ApiError(httpCode.NOT_ACCEPTABLE, "Paid course must have price greater than 0");
         }
     }
 
@@ -363,7 +365,7 @@ export const updateCourse = async (id: string, req: any) => {
         price !== null &&
         discountPrice > price
     ) {
-        throw new Error("Discount price cannot be greater than price");
+        throw new ApiError(httpCode.NOT_ACCEPTABLE, "Discount price cannot be greater than price");
     }
 
     // =========================

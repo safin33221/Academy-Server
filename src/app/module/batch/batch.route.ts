@@ -30,9 +30,9 @@ router.patch(
 );
 
 // Delete Batch
-router.delete(
-    "/:id",
-    auth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
+router.patch(
+    "/soft-delete/:id",
+    auth(UserRole.SUPER_ADMIN),
     BatchController.deleteBatch
 );
 

@@ -425,8 +425,9 @@ const deleteBatch = async (id: string) => {
         throw new Error("Batch not found");
     }
 
-    return prisma.batch.delete({
-        where: { id }
+    return prisma.batch.update({
+        where: { id },
+        data: { isDeleted: true }
     });
 };
 

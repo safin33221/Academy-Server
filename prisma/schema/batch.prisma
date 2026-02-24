@@ -23,8 +23,9 @@ model Batch {
     maxStudents   Int
     enrolledCount Int @default(0)
 
-    price    Int?
-    isActive Boolean @default(true)
+    price     Int?
+    isActive  Boolean @default(true)
+    isDeleted Boolean @default(false)
 
     status BatchStatus @default(UPCOMING)
 
