@@ -17,7 +17,7 @@ app.use(cookieParser());
 
 
 app.use('/api/v1', router)
-router.use("/api/v1/zoom/webhook", ZoomController.handleZoomWebhook);
+router.post("/api/v1/zoom/webhook", ZoomController.handleZoomWebhook);
 /* =======================
    Health Check
 ======================= */
