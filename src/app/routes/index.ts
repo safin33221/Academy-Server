@@ -5,6 +5,7 @@ import { UserRoutes } from '../module/user/user.route.js';
 import { CourseRoute } from '../module/course/course.route.js';
 import { BatchRoute } from '../module/batch/batch.route.js';
 import { PaymentRoutes } from '../module/payment/payment.route.js';
+import { batchClassRoute } from '../module/batchClass/batchClass.route.js';
 
 
 
@@ -35,6 +36,10 @@ const moduleRoutes = [
     {
         path: '/payment',
         route: PaymentRoutes
+    },
+    {
+        path: '/batch-classes',
+        route: batchClassRoute
     },
 
 ]

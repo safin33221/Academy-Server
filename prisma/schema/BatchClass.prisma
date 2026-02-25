@@ -4,36 +4,26 @@ enum ClassType {
 }
 
 enum ClassStatus {
-    DRAFT
-    PUBLISHED
-    CANCELLED
+    UPCOMING
+    ONGOING
+    ENDED
 }
 
 model BatchClass {
-    id String @id @default(uuid())
-
-    title String
-    slug  String @unique
-
-    batchId String
-    batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
-
-    classNumber Int // Class 1, Class 2, etc.
-
-    classDate DateTime
-    duration  Int? // minutes (optional)
-
-    videoId String? // Store only YouTube VIDEO_ID
-    type    ClassType @default(RECORDED)
-
-    status ClassStatus @default(DRAFT)
-
-    isActive  Boolean @default(true)
-    isDeleted Boolean @default(false)
-
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    @@index([batchId])
-    @@index([status])
+    id            String      @id @default(uuid())
+    batchId       String
+    instructorId  String
+    title         String
+    description   String?
+    startTime     DateTime
+    duration      Int
+    zoomMeetingId String?     @unique
+    zoomJoinUrl   String?
+    zoomStartUrl  String?
+    recordingUrl  String?
+    status        ClassStatus @default(UPCOMING)
+    classStatus   ClassType   @default(LIVE)
+    createdAt     DateTime    @default(now())
+    updatedAt     DateTime    @updatedAt
+    batch         Batch       @relation(fields: [batchId], references: [id])
 }
