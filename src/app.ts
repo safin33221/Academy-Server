@@ -3,7 +3,6 @@ import globalErrorHandler from "./app/middleware/globalErrorHandler.js";
 import notFound from "./app/middleware/notFound.js";
 import router from "./app/routes/index.js";
 import cookieParser from "cookie-parser";
-import { ZoomController } from "./app/module/zoom/zoom.controller.js";
 const app: Application = express();
 
 /* =======================
@@ -17,7 +16,7 @@ app.use(cookieParser());
 
 
 app.use('/api/v1', router)
-router.post("/zoom/webhook", ZoomController.handleZoomWebhook);
+// router.post("/zoom/webhook", ZoomController.handleZoomWebhook); 
 /* =======================
    Health Check
 ======================= */

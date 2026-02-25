@@ -38,7 +38,7 @@ const moduleRoutes = [
         route: PaymentRoutes
     },
     {
-        path: '/batch-classes',
+        path: '/batch-class',
         route: batchClassRoute
     },
 

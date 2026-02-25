@@ -9,18 +9,30 @@ import httpCode from "../../utils/httpStatus.js";
 // 🔹 Create Meeting
 export const createZoomMeeting = async (payload: {
     topic: string;
-    startTime: Date;
+    startTime: Date | string;
     duration: number;
 }) => {
     try {
+        const startTime =
+            payload.startTime instanceof Date
+                ? payload.startTime
+                : new Date(payload.startTime);
+
+        if (Number.isNaN(startTime.getTime())) {
+            throw new ApiError(httpCode.BAD_REQUEST, "Invalid startTime");
+        }
+
         const token = await getZoomAccessToken();
+        const zoomUserId = (process.env.ZOOM_USER_ID || "me")
+            .split("#")[0]
+            .trim();
 
         const response = await axios.post(
-            `https://api.zoom.us/v2/users/me/meetings`,
+            `https://api.zoom.us/v2/users/${encodeURIComponent(zoomUserId)}/meetings`,
             {
                 topic: payload.topic,
                 type: 2,
-                start_time: payload.startTime.toISOString(),
+                start_time: startTime.toISOString(),
                 duration: payload.duration,
                 timezone: "Asia/Dhaka",
                 settings: {
@@ -38,9 +50,18 @@ export const createZoomMeeting = async (payload: {
 
         return response.data;
     } catch (error: any) {
+        const zoomErrorPayload = error?.response?.data;
+        const zoomErrorMessage =
+            zoomErrorPayload?.message ||
+            (zoomErrorPayload
+                ? JSON.stringify(zoomErrorPayload)
+                : undefined);
+
         throw new ApiError(
             httpCode.BAD_REQUEST,
-            error?.response?.data?.message || "Zoom meeting creation failed"
+            zoomErrorMessage ||
+            error?.message ||
+            "Zoom meeting creation failed"
         );
     }
 };

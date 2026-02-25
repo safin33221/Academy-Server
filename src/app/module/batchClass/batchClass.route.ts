@@ -11,7 +11,7 @@ const router = express.Router();
 // 🔹 Instructor creates class
 router.post(
     "/create",
-    auth(UserRole.INSTRUCTOR),   // role-based middleware
+    auth(UserRole.ADMIN, UserRole.INSTRUCTOR),    // role-based middleware
     BatchClassController.createClass
 );
 
