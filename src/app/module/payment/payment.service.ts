@@ -8,35 +8,54 @@ import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";
 import { tuple } from "zod";
 
-const initiatePayment = async (userId: string, payload: any) => {
+const initiatePayment = async (userId: string, payload: { batchId: string }) => {
     const { batchId } = payload;
 
-    // 1️⃣ Check course
-    const batch = await prisma.batch.findUnique({
-        where: { id: batchId },
-        include: {
-            course: true
-        }
-    });
-    if (!batch) throw new ApiError(httpCode.NOT_ACCEPTABLE, "Batch not found");
+    if (!batchId) {
+        throw new ApiError(httpCode.BAD_REQUEST, "Batch ID is required.");
+    }
 
-    // 2️⃣ Check user
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-    });
-    if (!user) throw new ApiError(httpCode.NOT_ACCEPTABLE, "User not found");
+    // 1️⃣ Fetch user & batch in parallel
+    const [user, batch] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId } }),
+        prisma.batch.findUnique({
+            where: { id: batchId },
+            include: { course: true },
+        }),
+    ]);
 
-    // 3️⃣ Prevent already enrolled
+    if (!user) {
+        throw new ApiError(httpCode.NOT_FOUND, "User account not found.");
+    }
+
+    if (!batch) {
+        throw new ApiError(httpCode.NOT_FOUND, "Selected batch does not exist.");
+    }
+
+    const price = Number(batch.course?.discountPrice ?? batch.course?.price);
+
+    if (!price || price <= 0) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Invalid course pricing configuration."
+        );
+    }
+
+    // 2️⃣ Prevent duplicate enrollment
     const alreadyEnrolled = await prisma.enrollment.findUnique({
         where: {
             userId_batchId: { userId, batchId },
         },
     });
+
     if (alreadyEnrolled) {
-        throw new ApiError(httpCode.NOT_ACCEPTABLE, "Already enrolled");
+        throw new ApiError(
+            httpCode.CONFLICT,
+            "You are already enrolled in this course."
+        );
     }
 
-    // 4️⃣ Check if there's existing pending order
+    // 3️⃣ Reuse existing pending order
     const existingPendingOrder = await prisma.order.findFirst({
         where: {
             userId,
@@ -46,28 +65,27 @@ const initiatePayment = async (userId: string, payload: any) => {
     });
 
     if (existingPendingOrder) {
-        // Reuse same transaction instead of creating new
         const response = await SSLService.sslPaymentInit({
             amount: existingPendingOrder.amount,
             transactionId: existingPendingOrder.transactionId,
             name: user.name,
             email: user.email,
             phoneNumber: user.phone,
-            address: "Dhaka",
+            address: "N/A",
         });
 
         return { gatewayUrl: response.GatewayPageURL };
     }
 
-    // 5️⃣ Create new order + payment inside transaction
-    const result = await prisma.$transaction(async (tx) => {
+    // 4️⃣ Create order + payment atomically
+    const order = await prisma.$transaction(async (tx) => {
         const transactionId = uuidv4();
 
-        const order = await tx.order.create({
+        const createdOrder = await tx.order.create({
             data: {
                 userId,
                 batchId,
-                amount: Number(batch.course.discountPrice),
+                amount: price,
                 transactionId,
                 status: PaymentStatus.PENDING,
             },
@@ -75,40 +93,50 @@ const initiatePayment = async (userId: string, payload: any) => {
 
         await tx.payment.create({
             data: {
-                orderId: order.id,
+                orderId: createdOrder.id,
                 gatewayName: "SSLCommerz",
                 status: PaymentStatus.PENDING,
             },
         });
 
-        return order;
+        return createdOrder;
     });
 
-    // 6️⃣ Call SSL outside DB transaction
+    // 5️⃣ Call Payment Gateway outside transaction
     try {
         const response = await SSLService.sslPaymentInit({
-            amount: result.amount,
-            transactionId: result.transactionId,
+            amount: order.amount,
+            transactionId: order.transactionId,
             name: user.name,
             email: user.email,
             phoneNumber: user.phone,
-            address: "Dhaka",
+            address: "N/A",
         });
+
+        if (!response?.GatewayPageURL) {
+            throw new Error("Invalid gateway response.");
+        }
 
         return { gatewayUrl: response.GatewayPageURL };
+
     } catch (error) {
-        // 7️⃣ If SSL fails → mark order failed
-        await prisma.order.update({
-            where: { id: result.id },
-            data: { status: PaymentStatus.FAILED },
-        });
 
-        await prisma.payment.update({
-            where: { orderId: result.id },
-            data: { status: PaymentStatus.FAILED },
-        });
+        // Mark order + payment failed safely
+        await prisma.$transaction([
+            prisma.order.update({
+                where: { id: order.id },
+                data: { status: PaymentStatus.FAILED },
+            }),
+            prisma.payment.updateMany({
+                where: { orderId: order.id },
+                data: { status: PaymentStatus.FAILED },
+            }),
+        ]);
 
-        throw new Error("Payment gateway initialization failed");
+        throw new ApiError(
+            httpCode.BAD_GATEWAY,
+            "Failed to initialize payment gateway. Please try again."
+        );
     }
 };
 

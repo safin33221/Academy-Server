@@ -1,0 +1,39 @@
+enum ClassType {
+    LIVE
+    RECORDED
+}
+
+enum ClassStatus {
+    DRAFT
+    PUBLISHED
+    CANCELLED
+}
+
+model BatchClass {
+    id String @id @default(uuid())
+
+    title String
+    slug  String @unique
+
+    batchId String
+    batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+    classNumber Int // Class 1, Class 2, etc.
+
+    classDate DateTime
+    duration  Int? // minutes (optional)
+
+    videoId String? // Store only YouTube VIDEO_ID
+    type    ClassType @default(RECORDED)
+
+    status ClassStatus @default(DRAFT)
+
+    isActive  Boolean @default(true)
+    isDeleted Boolean @default(false)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([batchId])
+    @@index([status])
+}
