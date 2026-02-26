@@ -138,7 +138,9 @@ const updateUser = async (
     const allowedFields: Prisma.UserUpdateInput = {
         name: req.body.name,
         phone: req.body.phone,
+        role: req.body.role
     };
+    console.log(req.body.role);
 
     // 2️⃣ Handle profile image upload
     let imageUrl = null

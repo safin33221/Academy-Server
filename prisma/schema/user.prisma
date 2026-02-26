@@ -3,20 +3,21 @@ model User {
 
     // Identity
     name         String
-    email        String   @unique
-    phone        String   @unique
+    email        String  @unique
+    phone        String  @unique
     password     String
     profilePhoto String?
+
     // Authorization
-    role         UserRole @default(USER)
+    role UserRole @default(USER)
 
     // Account Status
     isVerified Boolean @default(false)
     isActive   Boolean @default(true)
     isDeleted  Boolean @default(false)
+    isBlocked  Boolean @default(false)
+    isPremium  Boolean @default(false)
 
-    isBlocked   Boolean   @default(false)
-    isPremium   Boolean   @default(false)
     // Audit
     lastLoginAt DateTime?
     createdAt   DateTime  @default(now())
@@ -25,4 +26,8 @@ model User {
     reviews     Review[]
     enrollments Enrollment[]
     orders      Order[]
+
+    // ✅ Many-to-Many reverse relation
+    instructorBatches Batch[] @relation("BatchInstructors")
+    batches           Batch[]
 }
