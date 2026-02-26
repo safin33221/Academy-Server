@@ -4,9 +4,48 @@ import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";
 import { fileUploader } from "../../helper/fileUploader.js";
 
+const normalizeStringArrayField = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => String(item).trim())
+            .filter(Boolean);
+    }
+
+    if (typeof value !== "string") return [];
+
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+            return parsed
+                .map((item) => String(item).trim())
+                .filter(Boolean);
+        }
+    } catch {
+        // Fall back to comma-separated values
+    }
+
+    return trimmed
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+};
+
 const createBatch = async (req: any) => {
-    const file = req.file
-    const payload = req.body
+    const file = req.file;
+    const payload = req.body;
+    console.log({ payload });
+
+    // ✅ Handle multiple instructor IDs
+    const instructorIds = Array.from(
+        new Set(
+            normalizeStringArrayField(
+                payload.instructorIds ?? payload.instructors
+            )
+        )
+    );
 
     // =========================
     // 1️⃣ Validate Course Exists
@@ -109,19 +148,8 @@ const createBatch = async (req: any) => {
         );
     }
 
-    if (
-        payload.discountPrice &&
-        payload.price &&
-        payload.discountPrice > payload.price
-    ) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Discount price cannot be greater than price"
-        );
-    }
-
     // =========================
-    // 5️⃣ Generate Unique Slug
+    // 5️⃣ Generate Slug
     // =========================
     const batchName = payload.name ?? payload.title;
 
@@ -132,33 +160,52 @@ const createBatch = async (req: any) => {
         );
     }
 
-    const CourseSlug = course.title
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, "-")
-        .replace(/[^\w-]+/g, "");
-    const batchSlug = payload.name
+    const courseSlug = course.title
         .toLowerCase()
         .trim()
         .replace(/\s+/g, "-")
         .replace(/[^\w-]+/g, "");
 
-    let slug = `${CourseSlug}-${batchSlug}`
+    const batchSlug = batchName
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^\w-]+/g, "");
 
+    const slug = `${courseSlug}-${batchSlug}`;
 
-
-
-
+    // =========================
+    // 6️⃣ Upload Image
+    // =========================
     let imageUrl = null;
 
     if (file) {
         const uploaded = await fileUploader.uploadToCloudinary(file);
         imageUrl = uploaded.secure_url;
-
     }
 
     // =========================
-    // 6️⃣ Create Batch
+    // 7️⃣ Validate Instructors (Optional but Recommended)
+    // =========================
+    if (instructorIds.length > 0) {
+        const validInstructors = await prisma.user.findMany({
+            where: {
+                id: { in: instructorIds },
+                role: "INSTRUCTOR", // optional role check
+            },
+            select: { id: true },
+        });
+
+        if (validInstructors.length !== instructorIds.length) {
+            throw new ApiError(
+                httpCode.BAD_REQUEST,
+                "One or more instructors are invalid"
+            );
+        }
+    }
+
+    // =========================
+    // 8️⃣ Create Batch
     // =========================
     const batch = await prisma.batch.create({
         data: {
@@ -170,13 +217,21 @@ const createBatch = async (req: any) => {
             startDate,
             endDate,
             maxStudents: capacity,
-            price: payload.price ?? 0,
+            price: payload.price ? Number(payload.price) : 0,
             status: payload.status ?? BatchStatus.UPCOMING,
             thumbnail: imageUrl,
-            videoURL: payload.videoURL || ""
+            videoURL: payload.videoURL || "",
+
+            // ✅ Instructor Relation
+            instructors: instructorIds.length
+                ? {
+                    connect: instructorIds.map((id: string) => ({ id })),
+                }
+                : undefined,
         },
         include: {
             course: true,
+            instructors: true,
         },
     });
 
@@ -191,7 +246,10 @@ const updateBatch = async (id: string, req: any) => {
     // =========================
     const existingBatch = await prisma.batch.findUnique({
         where: { id },
-        include: { course: true },
+        include: {
+            course: true,
+            instructors: true,
+        },
     });
 
     if (!existingBatch) {
@@ -199,7 +257,36 @@ const updateBatch = async (id: string, req: any) => {
     }
 
     // =========================
-    // 2️⃣ Validate Course (if changed)
+    // 2️⃣ Normalize Instructor IDs
+    // =========================
+    const instructorIds = Array.from(
+        new Set(
+            normalizeStringArrayField(
+                payload.instructorIds ?? payload.instructors
+            )
+        )
+    );
+
+    // Validate instructors if provided
+    if (instructorIds.length > 0) {
+        const validInstructors = await prisma.user.findMany({
+            where: {
+                id: { in: instructorIds },
+                role: "INSTRUCTOR",
+            },
+            select: { id: true },
+        });
+
+        if (validInstructors.length !== instructorIds.length) {
+            throw new ApiError(
+                httpCode.BAD_REQUEST,
+                "One or more instructors are invalid"
+            );
+        }
+    }
+
+    // =========================
+    // 3️⃣ Validate Course (if changed)
     // =========================
     let courseId = existingBatch.courseId;
 
@@ -216,7 +303,7 @@ const updateBatch = async (id: string, req: any) => {
     }
 
     // =========================
-    // 3️⃣ Date Validation
+    // 4️⃣ Date Validation
     // =========================
     const startDate = payload.startDate
         ? new Date(payload.startDate)
@@ -257,7 +344,7 @@ const updateBatch = async (id: string, req: any) => {
     }
 
     // =========================
-    // 4️⃣ Capacity Validation
+    // 5️⃣ Capacity Validation
     // =========================
     const capacity = payload.maxStudents
         ? Number(payload.maxStudents)
@@ -270,7 +357,6 @@ const updateBatch = async (id: string, req: any) => {
         );
     }
 
-    // Prevent reducing capacity below enrolled count
     if (capacity < existingBatch.enrolledCount) {
         throw new ApiError(
             httpCode.BAD_REQUEST,
@@ -279,7 +365,7 @@ const updateBatch = async (id: string, req: any) => {
     }
 
     // =========================
-    // 5️⃣ Price Validation
+    // 6️⃣ Price Validation
     // =========================
     const price =
         payload.price !== undefined
@@ -294,7 +380,7 @@ const updateBatch = async (id: string, req: any) => {
     }
 
     // =========================
-    // 6️⃣ Slug Regeneration (if name changed)
+    // 7️⃣ Slug Regeneration
     // =========================
     let slug = existingBatch.slug;
 
@@ -319,7 +405,7 @@ const updateBatch = async (id: string, req: any) => {
     }
 
     // =========================
-    // 7️⃣ Image Upload (Replace)
+    // 8️⃣ Image Replace
     // =========================
     let imageUrl = existingBatch.thumbnail;
 
@@ -329,7 +415,7 @@ const updateBatch = async (id: string, req: any) => {
     }
 
     // =========================
-    // 8️⃣ Update Batch
+    // 9️⃣ Update Batch
     // =========================
     const updatedBatch = await prisma.batch.update({
         where: { id },
@@ -350,9 +436,15 @@ const updateBatch = async (id: string, req: any) => {
                     : existingBatch.isActive,
             thumbnail: imageUrl,
             videoURL: payload.videoURL ?? existingBatch.videoURL,
+
+            // ✅ IMPORTANT: Replace instructors completely
+            instructors: {
+                set: instructorIds.map((id: string) => ({ id })),
+            },
         },
         include: {
             course: true,
+            instructors: true,
         },
     });
 
@@ -363,6 +455,7 @@ const getAllBatches = async () => {
     return prisma.batch.findMany({
         include: {
             course: true,
+            instructors: true
 
         },
         orderBy: {
@@ -408,7 +501,8 @@ const getSingleBatch = async (slug: string) => {
                         },
                     }
                 }
-            }
+            },
+            instructors: true
         },
     });
 
