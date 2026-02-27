@@ -130,6 +130,24 @@ const updateBatchStatus = catchAsync(
     }
 );
 
+
+const getInstructorBatches = catchAsync(
+    async (req, res) => {
+        const instructorId = req?.user?.id; // from auth middleware
+
+        const result = await BatchService.getInstructorBatches(
+            instructorId as string
+        );
+
+        sendResponse(res, {
+            status: httpCode.OK,
+            success: true,
+            message: "Instructor batches retrieved successfully",
+            data: result,
+        });
+    }
+);
+
 export const BatchController = {
     createBatch,
     updateBatch,
@@ -138,4 +156,5 @@ export const BatchController = {
     getSingleBatch,
     toggleBatchStatus,
     updateBatchStatus,
+    getInstructorBatches
 };

@@ -240,6 +240,9 @@ const createBatch = async (req: any) => {
 const updateBatch = async (id: string, req: any) => {
     const payload = req.body;
     const file = req.file;
+    const hasInstructorField =
+        payload?.instructorIds !== undefined ||
+        payload?.instructors !== undefined;
 
     // =========================
     // 1️⃣ Check Batch Exists
@@ -259,16 +262,18 @@ const updateBatch = async (id: string, req: any) => {
     // =========================
     // 2️⃣ Normalize Instructor IDs
     // =========================
-    const instructorIds = Array.from(
-        new Set(
-            normalizeStringArrayField(
-                payload.instructorIds ?? payload.instructors
+    const instructorIds = hasInstructorField
+        ? Array.from(
+            new Set(
+                normalizeStringArrayField(
+                    payload.instructorIds ?? payload.instructors
+                )
             )
         )
-    );
+        : [];
 
     // Validate instructors if provided
-    if (instructorIds.length > 0) {
+    if (hasInstructorField && instructorIds.length > 0) {
         const validInstructors = await prisma.user.findMany({
             where: {
                 id: { in: instructorIds },
@@ -438,9 +443,11 @@ const updateBatch = async (id: string, req: any) => {
             videoURL: payload.videoURL ?? existingBatch.videoURL,
 
             // ✅ IMPORTANT: Replace instructors completely
-            instructors: {
-                set: instructorIds.map((id: string) => ({ id })),
-            },
+            instructors: hasInstructorField
+                ? {
+                    set: instructorIds.map((id: string) => ({ id })),
+                }
+                : undefined,
         },
         include: {
             course: true,
@@ -581,6 +588,55 @@ const updateBatchStatus = async (
     return updatedBatch;
 };
 
+const getInstructorBatches = async (id: string) => {
+    // =========================
+    // 1️⃣ Validate Instructor
+    // =========================
+    const instructor = await prisma.user.findUnique({
+        where: { id },
+        select: { id: true, role: true },
+    });
+
+    if (!instructor) {
+        throw new ApiError(httpCode.NOT_FOUND, "Instructor not found");
+    }
+
+
+
+    // =========================
+    // 2️⃣ Get Instructor Batches
+    // =========================
+    const batches = await prisma.batch.findMany({
+        where: {
+            instructors: {
+                some: { id }, // Many-to-Many filter
+            },
+            isDeleted: false,
+        },
+        include: {
+            course: {
+                select: {
+                    id: true,
+                    title: true,
+                    slug: true,
+                },
+            },
+            instructors: {
+                select: {
+                    id: true,
+                    name: true,
+                },
+            },
+        },
+        orderBy: {
+            createdAt: "desc",
+        },
+    });
+
+    return batches;
+};
+
+
 
 export const BatchService = {
     createBatch,
@@ -589,5 +645,6 @@ export const BatchService = {
     deleteBatch,
     getSingleBatch,
     toggleBatchStatus,
-    updateBatchStatus
+    updateBatchStatus,
+    getInstructorBatches
 }

@@ -13,6 +13,19 @@ const router = Router();
    Instructor / Admin
 ========================= */
 
+// Get All Batches
+router.get("/", BatchController.getAllBatches);
+
+// Instructor Batches
+router.get(
+    "/instructors-batches",
+    auth(UserRole.INSTRUCTOR),
+    BatchController.getInstructorBatches
+);
+
+// Get Single Batch
+router.get("/:id", BatchController.getSingleBatch);
+
 // Create Batch
 router.post(
     "/",
@@ -29,39 +42,26 @@ router.patch(
     BatchController.updateBatch
 );
 
-// Delete Batch
+// Soft Delete
 router.patch(
     "/soft-delete/:id",
     auth(UserRole.SUPER_ADMIN),
     BatchController.deleteBatch
 );
 
-/* =========================
-   Public
-========================= */
-
-// Get All Batches (with filters)
-router.get("/", BatchController.getAllBatches);
-
-// Get Single Batch (by slug or id)
-router.get("/:id", BatchController.getSingleBatch);
-
-/* =========================
-   Admin Controls
-========================= */
-
-// Activate / Deactivate Batch
+// Toggle Active
 router.patch(
     "/toggle/:id",
     auth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
     BatchController.toggleBatchStatus
 );
 
-// Update Batch Status (UPCOMING / ONGOING etc.)
+// Update Status
 router.patch(
     "/status/:id",
     auth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
     BatchController.updateBatchStatus
 );
+
 
 export const BatchRoute: Router = router;
