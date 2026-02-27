@@ -1,12 +1,11 @@
 import axios from "axios";
 import crypto from "crypto";
+import { Request } from "express";
 import prisma from "../../../lib/prisma.js";
 import { getZoomAccessToken } from "../../../lib/zoom.js";
 import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";
 
-
-// 🔹 Create Meeting
 export const createZoomMeeting = async (payload: {
     topic: string;
     startTime: Date | string;
@@ -66,49 +65,149 @@ export const createZoomMeeting = async (payload: {
     }
 };
 
+const ZOOM_SIGNATURE_VERSION = "v0";
+const ZOOM_SIGNATURE_TTL_SECONDS = 300;
 
-// 🔹 Webhook Business Logic Only
-export const processZoomWebhook = async (body: any) => {
+type ZoomWebhookResult = {
+    statusCode: number;
+    body: Record<string, unknown>;
+};
 
-    // URL validation
-    if (body.event === "endpoint.url_validation") {
+const getHeaderValue = (value: string | string[] | undefined) => {
+    if (Array.isArray(value)) return value[0];
+    return value;
+};
 
-        const plainToken = body.payload.plainToken;
+const getRawRequestBody = (req: Request) => {
+    const rawBody = (req as Request & { rawBody?: string | Buffer }).rawBody;
+
+    if (typeof rawBody === "string") return rawBody;
+    if (Buffer.isBuffer(rawBody)) return rawBody.toString("utf8");
+
+    return JSON.stringify(req.body ?? {});
+};
+
+const isValidSignature = (expected: string, received: string) => {
+    const expectedBuffer = Buffer.from(expected);
+    const receivedBuffer = Buffer.from(received);
+
+    if (expectedBuffer.length !== receivedBuffer.length) {
+        return false;
+    }
+
+    return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
+};
+
+export const processZoomWebhook = async (
+    req: Request
+): Promise<ZoomWebhookResult> => {
+    const secretToken = process.env.ZOOM_WEBHOOK_SECRET;
+
+    if (!secretToken) {
+        throw new ApiError(
+            httpCode.INTERNAL_SERVER_ERROR,
+            "ZOOM_WEBHOOK_SECRET is not configured"
+        );
+    }
+
+    const requestTimestamp = getHeaderValue(
+        req.headers["x-zm-request-timestamp"]
+    );
+    const requestSignature = getHeaderValue(req.headers["x-zm-signature"]);
+
+    if (!requestTimestamp || !requestSignature) {
+        return {
+            statusCode: httpCode.UNAUTHORIZED,
+            body: { message: "Missing Zoom signature headers" },
+        };
+    }
+
+    const timestampNumber = Number(requestTimestamp);
+    if (!Number.isFinite(timestampNumber)) {
+        return {
+            statusCode: httpCode.UNAUTHORIZED,
+            body: { message: "Invalid Zoom timestamp header" },
+        };
+    }
+
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    if (Math.abs(nowInSeconds - timestampNumber) > ZOOM_SIGNATURE_TTL_SECONDS) {
+        return {
+            statusCode: httpCode.UNAUTHORIZED,
+            body: { message: "Stale Zoom webhook request" },
+        };
+    }
+
+    const rawBody = getRawRequestBody(req);
+    const message = `${ZOOM_SIGNATURE_VERSION}:${requestTimestamp}:${rawBody}`;
+
+    const hashForVerify = crypto
+        .createHmac("sha256", secretToken)
+        .update(message)
+        .digest("hex");
+
+    const signature = `${ZOOM_SIGNATURE_VERSION}=${hashForVerify}`;
+
+    if (!isValidSignature(signature, requestSignature)) {
+        return {
+            statusCode: httpCode.UNAUTHORIZED,
+            body: { message: "Invalid Zoom signature" },
+        };
+    }
+
+    const event = req.body?.event;
+    const payload = req.body?.payload;
+
+    if (event === "endpoint.url_validation") {
+        const plainToken = payload?.plainToken;
+
+        if (!plainToken || typeof plainToken !== "string") {
+            return {
+                statusCode: httpCode.BAD_REQUEST,
+                body: { message: "Invalid Zoom plainToken" },
+            };
+        }
 
         const encryptedToken = crypto
-            .createHmac("sha256", process.env.ZOOM_WEBHOOK_SECRET!)
+            .createHmac("sha256", secretToken)
             .update(plainToken)
             .digest("hex");
 
         return {
-            type: "validation",
-            data: { plainToken, encryptedToken },
+            statusCode: httpCode.OK,
+            body: { plainToken, encryptedToken },
         };
     }
 
-    // Recording completed
-    if (body.event === "recording.completed") {
+    if (event === "recording.completed") {
+        const meetingId = payload?.object?.id
+            ? String(payload.object.id)
+            : null;
 
-        const meetingId = body.payload.object.id;
+        const recordingFiles = Array.isArray(payload?.object?.recording_files)
+            ? payload.object.recording_files
+            : [];
 
-        const recordingFile =
-            body.payload.object.recording_files?.find(
-                (file: any) => file.file_type === "MP4"
-            );
+        const mp4File = recordingFiles.find(
+            (file: any) => file.file_type === "MP4"
+        );
 
-        if (recordingFile) {
-            await prisma.batchClass.update({
-                where: { zoomMeetingId: meetingId.toString() },
-                data: { recordingUrl: recordingFile.play_url },
+        if (meetingId && mp4File?.play_url) {
+            await prisma.batchClass.updateMany({
+                where: { zoomMeetingId: meetingId },
+                data: {
+                    recordingUrl: mp4File.play_url,
+                    status: "ENDED",
+                },
             });
         }
-
-        return { type: "recording_saved" };
     }
 
-    return { type: "ignored" };
+    return {
+        statusCode: httpCode.OK,
+        body: { received: true },
+    };
 };
-
 
 export const zoomService = {
     createZoomMeeting,

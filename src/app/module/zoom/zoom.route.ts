@@ -10,7 +10,7 @@ const router = express.Router();
 
 // 🔹 Zoom Webhook (NO auth middleware)
 router.post(
-    "/zoom/webhook",
+    "/webhook",
     ZoomController.handleZoomWebhook
 );
 
