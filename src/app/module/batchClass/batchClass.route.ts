@@ -8,20 +8,40 @@ import { BatchClassController } from "./batchClass.controller.js";
 const router = express.Router();
 
 
-// 🔹 Instructor creates class
 router.post(
-    "/create",
-    auth(UserRole.ADMIN, UserRole.INSTRUCTOR),    // role-based middleware
+    "/",
+    auth(UserRole.INSTRUCTOR),
     BatchClassController.createClass
 );
 
-
-// 🔹 Student gets enrolled batch classes
 router.get(
-    "/my-classes",
-    auth("STUDENT"),
-    BatchClassController.getStudentClasses
+    "/instructor/:id",
+    auth(UserRole.INSTRUCTOR),
+    BatchClassController.getInstructorClasses
 );
 
+router.get(
+    "/instructor/:id",
+    auth(UserRole.INSTRUCTOR),
+    BatchClassController.getInstructorSingleClass
+);
+
+router.patch(
+    "/:id",
+    auth(UserRole.INSTRUCTOR),
+    BatchClassController.updateClass
+);
+
+router.delete(
+    "/:id",
+    auth(UserRole.INSTRUCTOR),
+    BatchClassController.deleteClass
+);
+
+router.get(
+    "/student/:slug",
+    auth(UserRole.STUDENT),
+    BatchClassController.getStudentClasses
+);
 
 export const batchClassRoute: Router = router;
