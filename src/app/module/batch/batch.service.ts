@@ -4,11 +4,16 @@ import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";
 import { fileUploader } from "../../helper/fileUploader.js";
 
-const normalizeStringArrayField = (value: unknown): string[] => {
+/* ============================================================================
+   UTILITY FUNCTIONS
+============================================================================ */
+
+/**
+ * Normalizes instructor IDs from various input formats (array, JSON string, comma-separated)
+ */
+const normalizeInstructorIds = (value: unknown): string[] => {
     if (Array.isArray(value)) {
-        return value
-            .map((item) => String(item).trim())
-            .filter(Boolean);
+        return value.map((item) => String(item).trim()).filter(Boolean);
     }
 
     if (typeof value !== "string") return [];
@@ -16,151 +21,25 @@ const normalizeStringArrayField = (value: unknown): string[] => {
     const trimmed = value.trim();
     if (!trimmed) return [];
 
+    // Try parsing as JSON
     try {
         const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) {
-            return parsed
-                .map((item) => String(item).trim())
-                .filter(Boolean);
+            return parsed.map((item) => String(item).trim()).filter(Boolean);
         }
     } catch {
-        // Fall back to comma-separated values
+        // Not JSON, continue to comma splitting
     }
 
-    return trimmed
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean);
+    // Fallback to comma-separated values
+    return trimmed.split(",").map((item) => item.trim()).filter(Boolean);
 };
 
-const createBatch = async (req: any) => {
-    const file = req.file;
-    const payload = req.body;
-    console.log({ payload });
-
-    // ✅ Handle multiple instructor IDs
-    const instructorIds = Array.from(
-        new Set(
-            normalizeStringArrayField(
-                payload.instructorIds ?? payload.instructors
-            )
-        )
-    );
-
-    // =========================
-    // 1️⃣ Validate Course Exists
-    // =========================
-    if (!payload.courseId) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Course ID is required"
-        );
-    }
-
-    const course = await prisma.course.findUnique({
-        where: { id: payload.courseId },
-    });
-
-    if (!course) {
-        throw new ApiError(
-            httpCode.NOT_FOUND,
-            "Course not found"
-        );
-    }
-
-    // =========================
-    // 2️⃣ Date Validation
-    // =========================
-    const startDate = new Date(payload.startDate);
-    const endDate = payload.endDate
-        ? new Date(payload.endDate)
-        : null;
-
-    if (!payload.startDate || Number.isNaN(startDate.getTime())) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Invalid start date"
-        );
-    }
-
-    if (payload.endDate && Number.isNaN(endDate?.getTime())) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Invalid end date"
-        );
-    }
-
-    if (endDate && startDate >= endDate) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "End date must be greater than start date"
-        );
-    }
-
-    const enrollmentStart = payload.enrollmentStart
-        ? new Date(payload.enrollmentStart)
-        : startDate;
-
-    const enrollmentEnd = payload.enrollmentEnd
-        ? new Date(payload.enrollmentEnd)
-        : endDate ?? startDate;
-
-    if (Number.isNaN(enrollmentStart.getTime())) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Invalid enrollment start date"
-        );
-    }
-
-    if (Number.isNaN(enrollmentEnd.getTime())) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Invalid enrollment end date"
-        );
-    }
-
-    if (enrollmentStart > enrollmentEnd) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Enrollment end date must be greater than enrollment start date"
-        );
-    }
-
-    // =========================
-    // 3️⃣ Capacity Validation
-    // =========================
-    const capacity = Number(payload.capacity ?? payload.maxStudents);
-
-    if (!Number.isFinite(capacity) || capacity <= 0) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Capacity must be greater than 0"
-        );
-    }
-
-    // =========================
-    // 4️⃣ Price Validation
-    // =========================
-    if (payload.price && payload.price < 0) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Price cannot be negative"
-        );
-    }
-
-    // =========================
-    // 5️⃣ Generate Slug
-    // =========================
-    const batchName = payload.name ?? payload.title;
-
-    if (!batchName || typeof batchName !== "string") {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Batch name is required"
-        );
-    }
-
-    const courseSlug = course.title
+/**
+ * Generates a unique slug from course title and batch name
+ */
+const generateBatchSlug = (courseTitle: string, batchName: string): string => {
+    const courseSlug = courseTitle
         .toLowerCase()
         .trim()
         .replace(/\s+/g, "-")
@@ -172,41 +51,170 @@ const createBatch = async (req: any) => {
         .replace(/\s+/g, "-")
         .replace(/[^\w-]+/g, "");
 
-    const slug = `${courseSlug}-${batchSlug}`;
+    return `${courseSlug}-${batchSlug}`;
+};
 
-    // =========================
-    // 6️⃣ Upload Image
-    // =========================
+/**
+ * Validates date range logic
+ */
+const validateDateRange = (start: Date, end?: Date | null): void => {
+    if (end && start >= end) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "End date must be greater than start date"
+        );
+    }
+};
+
+/**
+ * Validates enrollment period logic
+ */
+const validateEnrollmentPeriod = (start: Date, end: Date): void => {
+    if (start > end) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Enrollment end date must be greater than enrollment start date"
+        );
+    }
+};
+
+/**
+ * Validates capacity
+ */
+const validateCapacity = (capacity: number): void => {
+    if (!Number.isFinite(capacity) || capacity <= 0) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Capacity must be greater than 0"
+        );
+    }
+};
+
+/**
+ * Validates price
+ */
+const validatePrice = (price?: number): void => {
+    if (price !== undefined && price < 0) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "Price cannot be negative"
+        );
+    }
+};
+
+/**
+ * Validates and returns parsed date
+ */
+const parseDate = (dateStr: string | undefined, fieldName: string): Date | null => {
+    if (!dateStr) return null;
+
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            `Invalid ${fieldName}`
+        );
+    }
+    return date;
+};
+
+/**
+ * Validates instructors exist and have correct role
+ */
+const validateInstructors = async (instructorIds: string[]): Promise<void> => {
+    if (instructorIds.length === 0) return;
+
+    const validInstructors = await prisma.user.findMany({
+        where: {
+            id: { in: instructorIds },
+            role: "INSTRUCTOR",
+        },
+        select: { id: true },
+    });
+
+    if (validInstructors.length !== instructorIds.length) {
+        throw new ApiError(
+            httpCode.BAD_REQUEST,
+            "One or more instructors are invalid"
+        );
+    }
+};
+
+/* ============================================================================
+   CREATE BATCH
+============================================================================ */
+
+const createBatch = async (req: any) => {
+    const file = req.file;
+    const payload = req.body;
+
+    // Process instructor IDs
+    const instructorIds = Array.from(
+        new Set(
+            normalizeInstructorIds(
+                payload.instructorIds ?? payload.instructors
+            )
+        )
+    );
+
+    // Validate course exists
+    if (!payload.courseId) {
+        throw new ApiError(httpCode.BAD_REQUEST, "Course ID is required");
+    }
+
+    const course = await prisma.course.findUnique({
+        where: { id: payload.courseId },
+    });
+
+    if (!course) {
+        throw new ApiError(httpCode.NOT_FOUND, "Course not found");
+    }
+
+    // Validate batch name
+    const batchName = payload.name ?? payload.title;
+    if (!batchName || typeof batchName !== "string") {
+        throw new ApiError(httpCode.BAD_REQUEST, "Batch name is required");
+    }
+
+    // Parse and validate dates
+    const startDate = parseDate(payload.startDate, "start date")!;
+    const endDate = parseDate(payload.endDate, "end date");
+
+    validateDateRange(startDate, endDate);
+
+    const enrollmentStart = parseDate(
+        payload.enrollmentStart,
+        "enrollment start date"
+    ) ?? startDate;
+
+    const enrollmentEnd = parseDate(
+        payload.enrollmentEnd,
+        "enrollment end date"
+    ) ?? endDate ?? startDate;
+
+    validateEnrollmentPeriod(enrollmentStart, enrollmentEnd);
+
+    // Validate capacity and price
+    const capacity = Number(payload.capacity ?? payload.maxStudents);
+    validateCapacity(capacity);
+
+    const price = payload.price ? Number(payload.price) : 0;
+    validatePrice(price);
+
+    // Generate slug
+    const slug = generateBatchSlug(course.title, batchName);
+
+    // Upload image if provided
     let imageUrl = null;
-
     if (file) {
         const uploaded = await fileUploader.uploadToCloudinary(file);
         imageUrl = uploaded.secure_url;
     }
 
-    // =========================
-    // 7️⃣ Validate Instructors (Optional but Recommended)
-    // =========================
-    if (instructorIds.length > 0) {
-        const validInstructors = await prisma.user.findMany({
-            where: {
-                id: { in: instructorIds },
-                role: "INSTRUCTOR", // optional role check
-            },
-            select: { id: true },
-        });
+    // Validate instructors
+    await validateInstructors(instructorIds);
 
-        if (validInstructors.length !== instructorIds.length) {
-            throw new ApiError(
-                httpCode.BAD_REQUEST,
-                "One or more instructors are invalid"
-            );
-        }
-    }
-
-    // =========================
-    // 8️⃣ Create Batch
-    // =========================
+    // Create batch
     const batch = await prisma.batch.create({
         data: {
             name: batchName,
@@ -217,16 +225,12 @@ const createBatch = async (req: any) => {
             startDate,
             endDate,
             maxStudents: capacity,
-            price: payload.price ? Number(payload.price) : 0,
+            price,
             status: payload.status ?? BatchStatus.UPCOMING,
             thumbnail: imageUrl,
             videoURL: payload.videoURL || "",
-
-            // ✅ Instructor Relation
             instructors: instructorIds.length
-                ? {
-                    connect: instructorIds.map((id: string) => ({ id })),
-                }
+                ? { connect: instructorIds.map((id: string) => ({ id })) }
                 : undefined,
         },
         include: {
@@ -237,16 +241,17 @@ const createBatch = async (req: any) => {
 
     return batch;
 };
+
+/* ============================================================================
+   UPDATE BATCH
+============================================================================ */
+
 const updateBatch = async (id: string, req: any) => {
     const payload = req.body;
     const file = req.file;
-    const hasInstructorField =
-        payload?.instructorIds !== undefined ||
-        payload?.instructors !== undefined;
+    const hasInstructorField = payload?.instructorIds !== undefined || payload?.instructors !== undefined;
 
-    // =========================
-    // 1️⃣ Check Batch Exists
-    // =========================
+    // Check if batch exists
     const existingBatch = await prisma.batch.findUnique({
         where: { id },
         include: {
@@ -259,42 +264,23 @@ const updateBatch = async (id: string, req: any) => {
         throw new ApiError(httpCode.NOT_FOUND, "Batch not found");
     }
 
-    // =========================
-    // 2️⃣ Normalize Instructor IDs
-    // =========================
+    // Process instructor IDs if provided
     const instructorIds = hasInstructorField
         ? Array.from(
             new Set(
-                normalizeStringArrayField(
+                normalizeInstructorIds(
                     payload.instructorIds ?? payload.instructors
                 )
             )
         )
         : [];
 
-    // Validate instructors if provided
     if (hasInstructorField && instructorIds.length > 0) {
-        const validInstructors = await prisma.user.findMany({
-            where: {
-                id: { in: instructorIds },
-                role: "INSTRUCTOR",
-            },
-            select: { id: true },
-        });
-
-        if (validInstructors.length !== instructorIds.length) {
-            throw new ApiError(
-                httpCode.BAD_REQUEST,
-                "One or more instructors are invalid"
-            );
-        }
+        await validateInstructors(instructorIds);
     }
 
-    // =========================
-    // 3️⃣ Validate Course (if changed)
-    // =========================
+    // Validate course if changed
     let courseId = existingBatch.courseId;
-
     if (payload.courseId && payload.courseId !== existingBatch.courseId) {
         const course = await prisma.course.findUnique({
             where: { id: payload.courseId },
@@ -307,60 +293,33 @@ const updateBatch = async (id: string, req: any) => {
         courseId = payload.courseId;
     }
 
-    // =========================
-    // 4️⃣ Date Validation
-    // =========================
+    // Parse and validate dates
     const startDate = payload.startDate
-        ? new Date(payload.startDate)
+        ? parseDate(payload.startDate, "start date")!
         : existingBatch.startDate;
 
     const endDate = payload.endDate
-        ? new Date(payload.endDate)
+        ? parseDate(payload.endDate, "end date")
         : existingBatch.endDate;
 
-    if (Number.isNaN(new Date(startDate).getTime())) {
-        throw new ApiError(httpCode.BAD_REQUEST, "Invalid start date");
-    }
-
-    if (endDate && Number.isNaN(new Date(endDate).getTime())) {
-        throw new ApiError(httpCode.BAD_REQUEST, "Invalid end date");
-    }
-
-    if (endDate && startDate >= endDate) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "End date must be greater than start date"
-        );
-    }
+    validateDateRange(startDate, endDate);
 
     const enrollmentStart = payload.enrollmentStart
-        ? new Date(payload.enrollmentStart)
+        ? parseDate(payload.enrollmentStart, "enrollment start date")!
         : existingBatch.enrollmentStart;
 
     const enrollmentEnd = payload.enrollmentEnd
-        ? new Date(payload.enrollmentEnd)
+        ? parseDate(payload.enrollmentEnd, "enrollment end date")!
         : existingBatch.enrollmentEnd;
 
-    if (enrollmentStart > enrollmentEnd) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Enrollment end date must be greater than enrollment start date"
-        );
-    }
+    validateEnrollmentPeriod(enrollmentStart, enrollmentEnd);
 
-    // =========================
-    // 5️⃣ Capacity Validation
-    // =========================
+    // Validate capacity
     const capacity = payload.maxStudents
         ? Number(payload.maxStudents)
         : existingBatch.maxStudents;
 
-    if (!Number.isFinite(capacity) || capacity <= 0) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Capacity must be greater than 0"
-        );
-    }
+    validateCapacity(capacity);
 
     if (capacity < existingBatch.enrolledCount) {
         throw new ApiError(
@@ -369,59 +328,30 @@ const updateBatch = async (id: string, req: any) => {
         );
     }
 
-    // =========================
-    // 6️⃣ Price Validation
-    // =========================
-    const price =
-        payload.price !== undefined
-            ? Number(payload.price)
-            : existingBatch.price;
+    // Validate price
+    const price = payload.price !== undefined
+        ? Number(payload.price)
+        : existingBatch.price;
 
-    if (price! < 0) {
-        throw new ApiError(
-            httpCode.BAD_REQUEST,
-            "Price cannot be negative"
-        );
-    }
+    validatePrice(price!);
 
-    // =========================
-    // 7️⃣ Slug Regeneration
-    // =========================
+    // Regenerate slug if name changed
     let slug = existingBatch.slug;
-
     if (payload.name && payload.name !== existingBatch.name) {
         const course = await prisma.course.findUnique({
             where: { id: courseId },
         });
-
-        const courseSlug = course!.title
-            .toLowerCase()
-            .trim()
-            .replace(/\s+/g, "-")
-            .replace(/[^\w-]+/g, "");
-
-        const batchSlug = payload.name
-            .toLowerCase()
-            .trim()
-            .replace(/\s+/g, "-")
-            .replace(/[^\w-]+/g, "");
-
-        slug = `${courseSlug}-${batchSlug}`;
+        slug = generateBatchSlug(course!.title, payload.name);
     }
 
-    // =========================
-    // 8️⃣ Image Replace
-    // =========================
+    // Upload new image if provided
     let imageUrl = existingBatch.thumbnail;
-
     if (file) {
         const uploaded = await fileUploader.uploadToCloudinary(file);
         imageUrl = uploaded.secure_url;
     }
 
-    // =========================
-    // 9️⃣ Update Batch
-    // =========================
+    // Update batch
     const updatedBatch = await prisma.batch.update({
         where: { id },
         data: {
@@ -441,12 +371,8 @@ const updateBatch = async (id: string, req: any) => {
                     : existingBatch.isActive,
             thumbnail: imageUrl,
             videoURL: payload.videoURL ?? existingBatch.videoURL,
-
-            // ✅ IMPORTANT: Replace instructors completely
             instructors: hasInstructorField
-                ? {
-                    set: instructorIds.map((id: string) => ({ id })),
-                }
+                ? { set: instructorIds.map((id: string) => ({ id })) }
                 : undefined,
         },
         include: {
@@ -458,40 +384,35 @@ const updateBatch = async (id: string, req: any) => {
     return updatedBatch;
 };
 
+/* ============================================================================
+   GET BATCHES
+============================================================================ */
+
 const getAllBatches = async () => {
     return prisma.batch.findMany({
         include: {
             course: true,
-            instructors: true
-
+            instructors: true,
         },
         orderBy: {
             createdAt: "desc",
         },
     });
 };
+
 const getSingleBatch = async (slug: string) => {
     const result = await prisma.batch.findUnique({
         where: { slug },
-
         include: {
             course: {
                 include: {
-                    curriculum: {
-                        orderBy: { order: "asc" },
-                    },
+                    curriculum: { orderBy: { order: "asc" } },
                     learnings: true,
                     requirements: true,
                     faqs: true,
                     reviews: {
                         include: {
-                            user: {
-                                select: {
-                                    id: true,
-                                    name: true,
-
-                                },
-                            },
+                            user: { select: { id: true, name: true } },
                         },
                         orderBy: { createdAt: "desc" },
                     },
@@ -506,16 +427,50 @@ const getSingleBatch = async (slug: string) => {
                             email: true,
                             profilePhoto: true,
                         },
-                    }
-                }
+                    },
+                },
             },
-            instructors: true
+            instructors: true,
         },
     });
 
     return result;
 };
 
+const getInstructorBatches = async (id: string) => {
+    // Validate instructor exists
+    const instructor = await prisma.user.findUnique({
+        where: { id },
+        select: { id: true, role: true },
+    });
+
+    if (!instructor) {
+        throw new ApiError(httpCode.NOT_FOUND, "Instructor not found");
+    }
+
+    // Get batches where instructor is assigned
+    const batches = await prisma.batch.findMany({
+        where: {
+            instructors: { some: { id } },
+            isDeleted: false,
+        },
+        include: {
+            course: {
+                select: { id: true, title: true, slug: true },
+            },
+            instructors: {
+                select: { id: true, name: true },
+            },
+        },
+        orderBy: { createdAt: "desc" },
+    });
+
+    return batches;
+};
+
+/* ============================================================================
+   DELETE / STATUS MANAGEMENT
+============================================================================ */
 
 const deleteBatch = async (id: string) => {
     const batch = await prisma.batch.findFirst({
@@ -528,115 +483,14 @@ const deleteBatch = async (id: string) => {
 
     return prisma.batch.update({
         where: { id },
-        data: { isDeleted: true }
+        data: { isDeleted: true },
     });
 };
 
 
-const toggleBatchStatus = async (id: string) => {
-    const batch = await prisma.batch.findUnique({
-        where: { id },
-    });
-
-    if (!batch) {
-        throw new Error("Batch not found");
-    }
-
-    // Toggle logic (you can adjust if needed)
-    const newStatus =
-        batch.status === BatchStatus.CANCELLED
-            ? BatchStatus.UPCOMING
-            : BatchStatus.CANCELLED;
-
-    const updatedBatch = await prisma.batch.update({
-        where: { id },
-        data: {
-            status: newStatus,
-        },
-    });
-
-    return updatedBatch;
-};
-
-/* =========================
-   Update Batch Status (Enum Based)
-========================= */
-const updateBatchStatus = async (
-    id: string,
-    status: BatchStatus
-) => {
-    const batch = await prisma.batch.findUnique({
-        where: { id },
-    });
-
-    if (!batch) {
-        throw new Error("Batch not found");
-    }
-
-    // Validate enum manually (extra safety)
-    if (!Object.values(BatchStatus).includes(status)) {
-        throw new Error("Invalid batch status");
-    }
-
-    const updatedBatch = await prisma.batch.update({
-        where: { id },
-        data: {
-            status,
-        },
-    });
-
-    return updatedBatch;
-};
-
-const getInstructorBatches = async (id: string) => {
-    // =========================
-    // 1️⃣ Validate Instructor
-    // =========================
-    const instructor = await prisma.user.findUnique({
-        where: { id },
-        select: { id: true, role: true },
-    });
-
-    if (!instructor) {
-        throw new ApiError(httpCode.NOT_FOUND, "Instructor not found");
-    }
-
-
-
-    // =========================
-    // 2️⃣ Get Instructor Batches
-    // =========================
-    const batches = await prisma.batch.findMany({
-        where: {
-            instructors: {
-                some: { id }, // Many-to-Many filter
-            },
-            isDeleted: false,
-        },
-        include: {
-            course: {
-                select: {
-                    id: true,
-                    title: true,
-                    slug: true,
-                },
-            },
-            instructors: {
-                select: {
-                    id: true,
-                    name: true,
-                },
-            },
-        },
-        orderBy: {
-            createdAt: "desc",
-        },
-    });
-
-    return batches;
-};
-
-
+/* ============================================================================
+   EXPORTS
+============================================================================ */
 
 export const BatchService = {
     createBatch,
@@ -644,7 +498,6 @@ export const BatchService = {
     updateBatch,
     deleteBatch,
     getSingleBatch,
-    toggleBatchStatus,
-    updateBatchStatus,
-    getInstructorBatches
-}
+
+    getInstructorBatches,
+};
