@@ -14,7 +14,11 @@ const router = Router();
 ========================= */
 
 // Get All Batches
-router.get("/", BatchController.getAllBatches);
+router.get("/", auth(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.INSTRUCTOR), BatchController.getAllBatches);
+
+// public
+router.get("/public", BatchController.getPublicBatches);
+
 
 // Instructor Batches
 router.get(
@@ -49,19 +53,6 @@ router.patch(
     BatchController.deleteBatch
 );
 
-// Toggle Active
-router.patch(
-    "/toggle/:id",
-    auth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    BatchController.toggleBatchStatus
-);
-
-// Update Status
-router.patch(
-    "/status/:id",
-    auth(UserRole.ADMIN, UserRole.SUPER_ADMIN),
-    BatchController.updateBatchStatus
-);
 
 
 export const BatchRoute: Router = router;

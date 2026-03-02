@@ -25,7 +25,7 @@ const createBatch = catchAsync(
    Update Batch
 ========================= */
 const updateBatch = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         const { id } = req.params;
 
         const result = await BatchService.updateBatch(id, req);
@@ -43,7 +43,7 @@ const updateBatch = catchAsync(
    Delete Batch
 ========================= */
 const deleteBatch = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         const { id } = req.params;
 
         const result = await BatchService.deleteBatch(id);
@@ -61,7 +61,7 @@ const deleteBatch = catchAsync(
    Get All Batches
 ========================= */
 const getAllBatches = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         const result = await BatchService.getAllBatches();
 
         sendResponse(res, {
@@ -77,7 +77,7 @@ const getAllBatches = catchAsync(
    Get Single Batch
 ========================= */
 const getSingleBatch = catchAsync(
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         const { id } = req.params;
 
         const result = await BatchService.getSingleBatch(id as string);
@@ -91,49 +91,28 @@ const getSingleBatch = catchAsync(
     }
 );
 
-/* =========================
-   Toggle Active
-========================= */
-const toggleBatchStatus = catchAsync(
-    async (req, res) => {
-        const { id } = req.params;
 
-        const result = await BatchService.toggleBatchStatus(id);
+
+const getPublicBatches = catchAsync(
+    async (req: Request, res: Response) => {
+
+        const result = await BatchService.getPublicBatches();
 
         sendResponse(res, {
             status: httpCode.OK,
             success: true,
-            message: "Batch status updated successfully",
+            message: "Public Batch retrieved successfully",
             data: result,
         });
     }
 );
 
-/* =========================
-   Update Batch Status Enum
-========================= */
-const updateBatchStatus = catchAsync(
-    async (req, res) => {
-        const { id } = req.params;
 
-        const result = await BatchService.updateBatchStatus(
-            id,
-            req.body.status
-        );
-
-        sendResponse(res, {
-            status: httpCode.OK,
-            success: true,
-            message: "Batch state changed successfully",
-            data: result,
-        });
-    }
-);
 
 
 const getInstructorBatches = catchAsync(
-    async (req, res) => {
-        const instructorId = req?.user?.id; // from auth middleware
+    async (req: Request, res: Response) => {
+        const instructorId = req?.user?.id;
 
         const result = await BatchService.getInstructorBatches(
             instructorId as string
@@ -154,7 +133,6 @@ export const BatchController = {
     deleteBatch,
     getAllBatches,
     getSingleBatch,
-    toggleBatchStatus,
-    updateBatchStatus,
+    getPublicBatches,
     getInstructorBatches
 };

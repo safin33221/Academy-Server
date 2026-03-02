@@ -4,9 +4,9 @@ import { AuthService } from "./auth.service.js";
 import sendResponse from "../../shared/sendResponse.js";
 import httpCode from "../../utils/httpStatus.js";
 
-
+  
 /**
- * LOGIN
+ * -----------------------------LOGIN---------------------------------------
  */
 const login = catchAsync(
     async (req: Request, res: Response, _next: NextFunction) => {
@@ -38,7 +38,7 @@ const login = catchAsync(
 );
 
 /**
- * REGISTER
+ * --------------------------------------REGISTER-------------------------------------------
  */
 const register = catchAsync(
     async (req: Request, res: Response, _next: NextFunction) => {
@@ -54,7 +54,7 @@ const register = catchAsync(
 );
 
 /**
- * REFRESH TOKEN
+ *-------------------------------------- REFRESH TOKEN-------------------------------------
  */
 const refreshToken = catchAsync(
     async (req: Request, res: Response, _next: NextFunction) => {
@@ -78,7 +78,7 @@ const refreshToken = catchAsync(
 );
 
 /**
- * LOGOUT
+ * --------------------------------------------LOGOUT-------------------------------------------------
  */
 const logout = catchAsync(
     async (_req: Request, res: Response, _next: NextFunction) => {

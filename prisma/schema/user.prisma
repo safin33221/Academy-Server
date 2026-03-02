@@ -15,9 +15,11 @@ model User {
     isBlocked  Boolean @default(false)
     isPremium  Boolean @default(false)
 
-    lastLoginAt DateTime?
-    createdAt   DateTime  @default(now())
-    updatedAt   DateTime  @updatedAt
+    lastLoginAt       DateTime?
+    passwordChangedAt DateTime?
+    lastActiveAt      DateTime?
+    createdAt         DateTime  @default(now())
+    updatedAt         DateTime  @updatedAt
 
     reviews     Review[]
     enrollments Enrollment[]
