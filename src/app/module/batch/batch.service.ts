@@ -488,6 +488,62 @@ const deleteBatch = async (id: string) => {
 };
 
 
+
+/* ============================================================================
+   Get Public Batch
+============================================================================ */
+
+const getPublicBatches = async () => {
+    const now = new Date();
+
+    return prisma.batch.findMany({
+        where: {
+            isActive: true,
+            isDeleted: false,
+            status: {
+                in: [BatchStatus.UPCOMING, BatchStatus.ONGOING]
+            },
+            // Optional: Only show batches that haven't ended yet
+            // endDate: {
+            //     gte: now
+            // }
+        },
+        include: {
+            course: {
+                select: {
+                    id: true,
+                    title: true,
+                    slug: true,
+                    thumbnail: true,
+                    fullDescription: true,
+                    shortDescription: true,
+                    price: true
+
+                }
+            },
+            instructors: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    profilePhoto: true,
+
+                }
+            },
+            // Include enrollment count but not individual enrollments
+            _count: {
+                select: {
+                    enrollments: true,
+                }
+            }
+        },
+        orderBy: {
+            createdAt: "desc",
+        },
+    });
+};
+
+
 /* ============================================================================
    EXPORTS
 ============================================================================ */
@@ -498,6 +554,6 @@ export const BatchService = {
     updateBatch,
     deleteBatch,
     getSingleBatch,
-
+    getPublicBatches,
     getInstructorBatches,
 };
