@@ -12,11 +12,16 @@ type AuthUser = { id: string; role: string };
 type CreateZoomMeetingPayload = { topic: string; startTime: Date | string; duration: number; batchClassId?: string };
 type ParticipantEntity = {
     user_id?: string | number;
+    participant_user_id?: string | number;
     id?: string | number;
     user_name?: string;
+    participant_name?: string;
     name?: string;
     email?: string;
+    user_email?: string;
+    participant_email?: string;
     registrant_id?: string;
+    registrantId?: string;
     join_time?: string;
     leave_time?: string;
     duration?: number;
@@ -55,22 +60,38 @@ const isValidSignature = (expected: string, received: string) => {
 };
 
 const toParticipantZoomId = (participant: ParticipantEntity): string | null => {
-    const value = participant.user_id ?? participant.id;
-    return value === undefined || value === null ? null : String(value);
+    const value =
+        participant.user_id ?? participant.participant_user_id ?? participant.id;
+    if (value === undefined || value === null) return null;
+
+    const normalized = String(value).trim();
+    return normalized || null;
 };
 
 const toParticipantName = (participant: ParticipantEntity): string =>
-    participant.user_name?.trim() || participant.name?.trim() || "Unknown Participant";
+    participant.user_name?.trim() ||
+    participant.participant_name?.trim() ||
+    participant.name?.trim() ||
+    "Unknown Participant";
 
 const toParticipantEmail = (participant: ParticipantEntity): string | null => {
-    if (!participant.email) return null;
-    const email = participant.email.trim();
+    const emailCandidate =
+        participant.email ??
+        participant.user_email ??
+        participant.participant_email;
+
+    if (!emailCandidate) return null;
+
+    const email = String(emailCandidate).trim().toLowerCase();
     return email || null;
 };
 
 const toRegistrantId = (participant: ParticipantEntity): string | null => {
-    if (!participant.registrant_id) return null;
-    const registrantId = participant.registrant_id.trim();
+    const registrantIdCandidate =
+        participant.registrant_id ?? participant.registrantId;
+
+    if (!registrantIdCandidate) return null;
+    const registrantId = String(registrantIdCandidate).trim();
     return registrantId || null;
 };
 
@@ -96,17 +117,63 @@ const resolveBatchClassByMeetingId = async (meetingId: string) => {
     });
 };
 
-const resolveSystemUserIdForParticipant = async (participant: ParticipantEntity): Promise<string | null> => {
+const resolveSystemUserIdForParticipant = async (
+    participant: ParticipantEntity,
+    meetingId?: string
+): Promise<string | null> => {
+    const registrantId = toRegistrantId(participant);
+    if (registrantId) {
+        const registration = await prisma.zoomRegistration.findUnique({
+            where: { registrantId },
+            select: { userId: true },
+        });
+
+        if (registration?.userId) return registration.userId;
+    }
+
     const email = toParticipantEmail(participant);
     if (email) {
         const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
         if (user?.id) return user.id;
+
+        if (meetingId) {
+            const registrationByMeeting = await prisma.zoomRegistration.findFirst({
+                where: {
+                    meetingId,
+                    user: {
+                        email,
+                    },
+                },
+                select: { userId: true },
+            });
+
+            if (registrationByMeeting?.userId) return registrationByMeeting.userId;
+        }
     }
 
-    const registrantId = toRegistrantId(participant);
-    if (registrantId) {
-        const registration = await prisma.zoomRegistration.findUnique({ where: { registrantId }, select: { userId: true } });
-        if (registration?.userId) return registration.userId;
+    if (meetingId) {
+        const participantName = toParticipantName(participant);
+        const batchClass = await resolveBatchClassByMeetingId(meetingId);
+
+        if (batchClass && participantName && participantName !== "Unknown Participant") {
+            const candidateUsers = await prisma.enrollment.findMany({
+                where: {
+                    batchId: batchClass.batchId,
+                    user: {
+                        name: {
+                            equals: participantName,
+                            mode: "insensitive",
+                        },
+                    },
+                },
+                select: { userId: true },
+                take: 2,
+            });
+
+            if (candidateUsers.length === 1) {
+                return candidateUsers[0].userId;
+            }
+        }
     }
 
     return null;
@@ -205,8 +272,16 @@ const handleParticipantJoined = async (payload: any) => {
         });
         if (existingOpenRecord) return;
 
-        const userId = await resolveSystemUserIdForParticipant(participant);
-        const email = toParticipantEmail(participant);
+        const userId = await resolveSystemUserIdForParticipant(participant, meetingId);
+        let email = toParticipantEmail(participant);
+
+        if (!email && userId) {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { email: true },
+            });
+            email = user?.email ?? null;
+        }
 
         const isLate =
             zoomMeeting.actualStartTime &&
@@ -464,8 +539,16 @@ const syncAttendanceAfterMeeting = async (meetingId: string) => {
         }
 
         const leaveTime = toDate(participant.leave_time);
-        const userId = await resolveSystemUserIdForParticipant(participant);
-        const email = toParticipantEmail(participant);
+        const userId = await resolveSystemUserIdForParticipant(participant, meetingId);
+        let email = toParticipantEmail(participant);
+
+        if (!email && userId) {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { email: true },
+            });
+            email = user?.email ?? null;
+        }
 
         const existing = await prisma.zoomAttendance.findUnique({
             where: {
