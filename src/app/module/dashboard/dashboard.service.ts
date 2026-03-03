@@ -1,5 +1,8 @@
-import { BatchStatus, PaymentStatus, UserRole } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
+
+const { BatchStatus, PaymentStatus, UserRole } = prismaClientPkg;
+type BatchStatusValue = (typeof BatchStatus)[keyof typeof BatchStatus];
 
 const getTodayRange = (baseDate: Date) => {
     const start = new Date(baseDate);
@@ -39,7 +42,7 @@ const formatTimeRange = (startTime: Date, durationMinutes: number) => {
     return `${formatter.format(startTime)} - ${formatter.format(endTime)}`;
 };
 
-const toEnrollmentStatusLabel = (status: BatchStatus) => {
+const toEnrollmentStatusLabel = (status: BatchStatusValue) => {
     if (status === BatchStatus.ONGOING) return "Active";
     if (status === BatchStatus.COMPLETED) return "Completed";
     if (status === BatchStatus.UPCOMING) return "Upcoming";
@@ -49,7 +52,7 @@ const toEnrollmentStatusLabel = (status: BatchStatus) => {
 const calculateBatchProgress = (params: {
     startDate: Date;
     endDate: Date | null;
-    status: BatchStatus;
+    status: BatchStatusValue;
     totalClassCount: number;
     endedClassCount: number;
     now: Date;

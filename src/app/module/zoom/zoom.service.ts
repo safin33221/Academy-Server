@@ -1,11 +1,13 @@
 import axios from "axios";
 import crypto from "crypto";
-import { ClassStatus, UserRole } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
 import { Request } from "express";
 import prisma from "../../../lib/prisma.js";
 import { getZoomAccessToken } from "../../../lib/zoom.js";
 import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";
+
+const { ClassStatus, UserRole } = prismaClientPkg;
 
 type ZoomWebhookResult = { statusCode: number; body: Record<string, unknown> };
 type AuthUser = { id: string; role: string };

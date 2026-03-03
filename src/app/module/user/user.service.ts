@@ -1,7 +1,7 @@
 import prisma from "../../../lib/prisma.js";
 import { paginationHelper } from "../../helper/paginationHelper.js";
 import { IOptions } from "../../interface/pagination.js";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { userSearchableField } from "./user.constant.js";
 import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";

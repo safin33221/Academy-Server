@@ -1,8 +1,9 @@
 import express, { Router } from "express";
 import { PaymentController } from "./payment.controller.js";
 import auth from "../../middleware/auth.js";
-import { UserRole } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
 
+const { UserRole } = prismaClientPkg;
 
 const router = express.Router();
 

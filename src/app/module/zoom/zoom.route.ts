@@ -1,7 +1,9 @@
 import express, { Router } from "express";
-import { UserRole } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
 import auth from "../../middleware/auth.js";
 import { ZoomController } from "./zoom.controller.js";
+
+const { UserRole } = prismaClientPkg;
 
 const router = express.Router();
 

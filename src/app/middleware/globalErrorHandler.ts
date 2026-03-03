@@ -1,4 +1,8 @@
-import { Prisma } from "@prisma/client";
+import {
+    PrismaClientInitializationError,
+    PrismaClientKnownRequestError,
+    PrismaClientValidationError,
+} from "@prisma/client/runtime/client";
 import { Request, Response, NextFunction } from "express";
 import ApiError from "../error/ApiError.js";
 import httpCode from "../utils/httpStatus.js";
@@ -25,7 +29,7 @@ const globalErrorHandler = (
     /* =======================
        Prisma Known Errors
     ======================= */
-    else if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    else if (err instanceof PrismaClientKnownRequestError) {
         switch (err.code) {
             case "P2002":
                 statusCode = httpCode.CONFLICT;
@@ -54,7 +58,7 @@ const globalErrorHandler = (
     /* =======================
        Prisma Validation Errors
     ======================= */
-    else if (err instanceof Prisma.PrismaClientValidationError) {
+    else if (err instanceof PrismaClientValidationError) {
         statusCode = httpCode.BAD_REQUEST;
         message = "Database validation error";
         errorDetails = err.message;
@@ -63,7 +67,7 @@ const globalErrorHandler = (
     /* =======================
        Prisma Initialization Errors
     ======================= */
-    else if (err instanceof Prisma.PrismaClientInitializationError) {
+    else if (err instanceof PrismaClientInitializationError) {
         statusCode = httpCode.INTERNAL_SERVER_ERROR;
         message = "Failed to initialize database client";
         errorDetails = err.message;

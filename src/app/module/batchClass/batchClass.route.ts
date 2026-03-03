@@ -1,8 +1,9 @@
 import express, { Router } from "express";
 import auth from "../../middleware/auth.js";
-import { UserRole } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
 import { BatchClassController } from "./batchClass.controller.js";
 
+const { UserRole } = prismaClientPkg;
 
 
 const router = express.Router();

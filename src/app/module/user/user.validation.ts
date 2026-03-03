@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { UserRole } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
+
+const { UserRole } = prismaClientPkg;
 
 const objectId = z.string().uuid("Invalid user id");
 

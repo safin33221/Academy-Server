@@ -1,8 +1,10 @@
-import { BatchStatus } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
 import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";
 import { fileUploader } from "../../helper/fileUploader.js";
+
+const { BatchStatus } = prismaClientPkg;
 
 /* ============================================================================
    UTILITY FUNCTIONS

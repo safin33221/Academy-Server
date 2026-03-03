@@ -1,7 +1,9 @@
 import { Router } from "express";
-import { UserRole } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
 import auth from "../../middleware/auth.js";
 import { DashboardController } from "./dashboard.controller.js";
+
+const { UserRole } = prismaClientPkg;
 
 const router = Router();
 

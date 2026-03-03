@@ -2,8 +2,9 @@ import { Router } from "express"
 import auth from "../../middleware/auth.js";
 import { CourseController } from "./course.controller.js";
 import { fileUploader } from "../../helper/fileUploader.js";
-import { UserRole } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
 
+const { UserRole } = prismaClientPkg;
 
 const router = Router();
 

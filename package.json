@@ -5,10 +5,12 @@
   "type": "module",
   "packageManager": "pnpm@9.15.9",
   "engines": {
-    "node": "20.x"
+    "node": "^20.19.0 || ^22.12.0"
   },
   "scripts": {
+    "predev": "prisma generate --schema=./prisma/schema && node scripts/fix-prisma-client.cjs",
     "dev": "tsx watch src/server.ts",
+    "prebuild": "prisma generate --schema=./prisma/schema && node scripts/fix-prisma-client.cjs",
     "build": "tsc",
     "start": "node dist/server.js",
     "prisma:studio": "prisma studio",

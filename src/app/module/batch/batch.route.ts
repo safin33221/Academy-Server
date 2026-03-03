@@ -4,8 +4,10 @@ import auth from "../../middleware/auth.js";
 
 import { BatchController } from "./batch.controller.js";
 
-import { UserRole } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
 import { fileUploader } from "../../helper/fileUploader.js";
+
+const { UserRole } = prismaClientPkg;
 
 const router = Router();
 

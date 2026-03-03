@@ -1,12 +1,14 @@
 
 import { v4 as uuidv4 } from "uuid";
 
-import { PaymentStatus, UserRole } from "@prisma/client";
+import prismaClientPkg from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
 import { SSLService } from "../sslCommerz/sslCommerz.service.js";
 import ApiError from "../../error/ApiError.js";
 import httpCode from "../../utils/httpStatus.js";
 import { tuple } from "zod";
+
+const { PaymentStatus, UserRole } = prismaClientPkg;
 
 const initiatePayment = async (userId: string, payload: { batchId: string }) => {
     const { batchId } = payload;
