@@ -6,6 +6,7 @@ import { CourseRoute } from '../module/course/course.route.js';
 import { BatchRoute } from '../module/batch/batch.route.js';
 import { PaymentRoutes } from '../module/payment/payment.route.js';
 import { batchClassRoute } from '../module/batchClass/batchClass.route.js';
+import { DashboardRoute } from '../module/dashboard/dashboard.route.js';
 
 
 
@@ -40,6 +41,10 @@ const moduleRoutes = [
     {
         path: '/batch-class',
         route: batchClassRoute
+    },
+    {
+        path: '/dashboard',
+        route: DashboardRoute
     },
 
 ]
