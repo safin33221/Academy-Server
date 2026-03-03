@@ -1,0 +1,11 @@
+model BatchClassAttendance {
+    id           String         @id @default(uuid())
+    batchClassId String
+    attendanceId String
+    batchClass   BatchClass     @relation(fields: [batchClassId], references: [id], onDelete: Cascade)
+    attendance   ZoomAttendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+    createdAt    DateTime       @default(now())
+
+    @@unique([batchClassId, attendanceId])
+    @@map("batch_class_attendances")
+}

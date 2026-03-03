@@ -49,18 +49,27 @@ const createClass = async (user: any, payload: any) => {
         duration,
     });
 
-    return prisma.batchClass.create({
-        data: {
-            batchId: payload.batchId,
-            instructorId: user.id,
-            title: payload.title,
-            description: payload.description || null,
-            startTime,
-            duration,
-            zoomMeetingId: String(zoomMeeting.id),
-            zoomJoinUrl: zoomMeeting.join_url,
-            zoomStartUrl: zoomMeeting.start_url,
-        },
+    return prisma.$transaction(async (tx) => {
+        const createdClass = await tx.batchClass.create({
+            data: {
+                batchId: payload.batchId,
+                instructorId: user.id,
+                title: payload.title,
+                description: payload.description || null,
+                startTime,
+                duration,
+                zoomMeetingId: String(zoomMeeting.id),
+                zoomJoinUrl: zoomMeeting.join_url,
+                zoomStartUrl: zoomMeeting.start_url,
+            },
+        });
+
+        await tx.zoomMeeting.updateMany({
+            where: { meetingId: String(zoomMeeting.id) },
+            data: { batchClassId: createdClass.id },
+        });
+
+        return createdClass;
     });
 };
 
