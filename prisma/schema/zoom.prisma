@@ -1,0 +1,79 @@
+model ZoomMeeting {
+    id              String    @id @default(uuid())
+    meetingId       String    @unique // Zoom থেকে পাওয়া meeting ID
+    topic           String
+    startTime       DateTime
+    duration        Int // মিনিটে
+    joinUrl         String
+    startUrl        String
+    password        String?
+    hostEmail       String?
+    settings        Json? // Zoom meeting settings
+    status          String    @default("waiting") // waiting, started, ended
+    actualStartTime DateTime?
+    actualEndTime   DateTime?
+    createdAt       DateTime  @default(now())
+    updatedAt       DateTime  @updatedAt
+
+    // Relations
+    attendances   ZoomAttendance[]
+    recordings    ZoomRecording[]
+    registrations ZoomRegistration[]
+    batchClass    BatchClass?        @relation(fields: [batchClassId], references: [id]) // এক-থেকে-এক সম্পর্ক (BatchClass এর সাথে)
+    batchClassId  String?
+}
+
+model ZoomAttendance {
+    id                String      @id @default(uuid())
+    meetingId         String // Zoom meeting ID
+    meeting           ZoomMeeting @relation(fields: [meetingId], references: [meetingId])
+    participantZoomId String // Zoom এর participant ID
+    participantName   String
+    email             String?
+    userId            String?     @map("user_id") // আমাদের সিস্টেমের user ID
+    user              User?       @relation(fields: [userId], references: [id])
+    joinTime          DateTime
+    leaveTime         DateTime?
+    duration          Int? // সেকেন্ডে সময় (leaveTime - joinTime)
+    status            String      @default("PRESENT") // PRESENT, LATE, LEFT_EARLY
+    registrantId      String? // Zoom registrant ID
+
+    // BatchClass এর সাথে সংযোগ (অনেক-থেকে-অনেক)
+    batchClassAttendance BatchClassAttendance[]
+
+    @@unique([meetingId, participantZoomId, joinTime])
+    @@index([meetingId])
+    @@index([userId])
+    @@map("zoom_attendances")
+}
+
+model ZoomRecording {
+    id             String      @id @default(uuid())
+    meetingId      String
+    meeting        ZoomMeeting @relation(fields: [meetingId], references: [meetingId])
+    recordingId    String      @unique
+    fileType       String // MP4, M4A, TRANSCRIPT, etc.
+    downloadUrl    String
+    playUrl        String? // streaming URL
+    fileSize       Int?
+    recordingStart DateTime
+    recordingEnd   DateTime
+    createdAt      DateTime    @default(now())
+
+    @@index([meetingId])
+    @@map("zoom_recordings")
+}
+
+model ZoomRegistration {
+    id           String      @id @default(uuid())
+    registrantId String      @unique // Zoom registrant ID
+    meetingId    String
+    meeting      ZoomMeeting @relation(fields: [meetingId], references: [meetingId])
+    userId       String
+    user         User        @relation(fields: [userId], references: [id])
+    joinUrl      String?
+    createdAt    DateTime    @default(now())
+
+    @@unique([meetingId, userId])
+    @@map("zoom_registrations")
+}

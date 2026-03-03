@@ -29,5 +29,7 @@ model User {
     instructorBatches Batch[] @relation("BatchInstructors")
 
     // ✅ Owner relation
-    ownedBatches Batch[] @relation("BatchOwner")
+    ownedBatches      Batch[]            @relation("BatchOwner")
+    zoomAttendances   ZoomAttendance[]
+    zoomRegistrations ZoomRegistration[]
 }
