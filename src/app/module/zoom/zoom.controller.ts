@@ -56,60 +56,6 @@ const syncAttendanceAfterMeeting = catchAsync(
     }
 );
 
-const getMeetingAttendance = catchAsync(
-    async (req: Request, res: Response) => {
-        const result = await zoomService.getMeetingAttendanceReport(
-            req.params.meetingId,
-            {
-                id: req.user?.id as string,
-                role: req.user?.role as string,
-            }
-        );
-
-        sendResponse(res, {
-            status: httpCode.OK,
-            success: true,
-            message: "Meeting attendance retrieved successfully",
-            data: result,
-        });
-    }
-);
-
-const getBatchClassAttendance = catchAsync(
-    async (req: Request, res: Response) => {
-        const result = await zoomService.getBatchClassAttendanceReport(
-            req.params.classId,
-            {
-                id: req.user?.id as string,
-                role: req.user?.role as string,
-            }
-        );
-
-        sendResponse(res, {
-            status: httpCode.OK,
-            success: true,
-            message: "Class attendance report retrieved successfully",
-            data: result,
-        });
-    }
-);
-
-const getMyBatchClassAttendance = catchAsync(
-    async (req: Request, res: Response) => {
-        const result = await zoomService.getMyBatchClassAttendance(
-            req.params.classId,
-            req.user?.id as string
-        );
-
-        sendResponse(res, {
-            status: httpCode.OK,
-            success: true,
-            message: "My attendance retrieved successfully",
-            data: result,
-        });
-    }
-);
-
 const handleZoomWebhook = catchAsync(
     async (req: Request, res: Response) => {
         const result = await zoomService.processZoomWebhook(req);
@@ -121,8 +67,5 @@ export const ZoomController = {
     createZoomMeeting,
     createMeetingRegistration,
     syncAttendanceAfterMeeting,
-    getMeetingAttendance,
-    getBatchClassAttendance,
-    getMyBatchClassAttendance,
     handleZoomWebhook,
 };

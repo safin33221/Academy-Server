@@ -4,6 +4,7 @@ import notFound from "./app/middleware/notFound.js";
 import router from "./app/routes/index.js";
 import cookieParser from "cookie-parser";
 import { zoomRoute } from "./app/module/zoom/zoom.route.js";
+import { attendanceRoute } from "./app/module/attendance/attendance.route.js";
 
 const app: Application = express();
 

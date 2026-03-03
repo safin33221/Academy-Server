@@ -32,22 +32,4 @@ router.post(
     ZoomController.syncAttendanceAfterMeeting
 );
 
-router.get(
-    "/meetings/:meetingId/attendance",
-    auth(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.INSTRUCTOR),
-    ZoomController.getMeetingAttendance
-);
-
-router.get(
-    "/classes/:classId/attendance",
-    auth(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.INSTRUCTOR),
-    ZoomController.getBatchClassAttendance
-);
-
-router.get(
-    "/classes/:classId/my-attendance",
-    auth(UserRole.STUDENT),
-    ZoomController.getMyBatchClassAttendance
-);
-
 export const zoomRoute: Router = router;
