@@ -8,6 +8,12 @@ const { UserRole } = prismaClientPkg;
 const router = Router();
 
 router.get(
+    "/class-attendance-overview",
+    auth(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.INSTRUCTOR),
+    DashboardController.getClassAttendanceOverview
+);
+
+router.get(
     "/overview",
     auth(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.INSTRUCTOR),
     DashboardController.getDashboardOverview

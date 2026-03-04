@@ -15,6 +15,20 @@ const getDashboardOverview = catchAsync(async (_req: Request, res: Response) => 
     });
 });
 
+const getClassAttendanceOverview = catchAsync(
+    async (_req: Request, res: Response) => {
+        const result = await DashboardService.getClassAttendanceOverview();
+
+        sendResponse(res, {
+            status: httpCode.OK,
+            success: true,
+            message: "Class attendance overview retrieved successfully",
+            data: result,
+        });
+    }
+);
+
 export const DashboardController = {
     getDashboardOverview,
+    getClassAttendanceOverview,
 };
