@@ -3,6 +3,23 @@ import prisma from "../../../lib/prisma.js";
 
 const { BatchStatus, PaymentStatus, UserRole } = prismaClientPkg;
 type BatchStatusValue = (typeof BatchStatus)[keyof typeof BatchStatus];
+type ClassTimelineStatus = "UPCOMING" | "ONGOING" | "ENDED";
+type ClassAttendanceAggregation = {
+    matchedStudentIds: Set<string>;
+    unknownParticipants: number;
+    totalDurationSeconds: number;
+    totalSessions: number;
+};
+type EnrollmentLookup = {
+    studentIds: Set<string>;
+    emailToStudentId: Map<string, string>;
+};
+type DailyAttendanceTrend = {
+    date: string;
+    totalClasses: number;
+    expectedStudents: number;
+    presentStudents: number;
+};
 
 const getTodayRange = (baseDate: Date) => {
     const start = new Date(baseDate);
@@ -16,6 +33,20 @@ const getTodayRange = (baseDate: Date) => {
 
 const clamp = (value: number, min: number, max: number) =>
     Math.min(max, Math.max(min, value));
+
+const calculateDurationSeconds = (
+    joinTime: Date,
+    leaveTime: Date | null,
+    existingDuration: number | null
+) => {
+    if (typeof existingDuration === "number" && existingDuration >= 0) {
+        return existingDuration;
+    }
+
+    if (!leaveTime) return 0;
+
+    return Math.max(0, Math.floor((leaveTime.getTime() - joinTime.getTime()) / 1000));
+};
 
 const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-US", {
@@ -41,6 +72,30 @@ const formatTimeRange = (startTime: Date, durationMinutes: number) => {
 
     return `${formatter.format(startTime)} - ${formatter.format(endTime)}`;
 };
+
+const getClassTimelineStatus = (
+    startTime: Date,
+    durationMinutes: number,
+    now: Date
+): ClassTimelineStatus => {
+    const classStart = startTime.getTime();
+    const classEnd = classStart + durationMinutes * 60_000;
+    const currentTime = now.getTime();
+
+    if (currentTime < classStart) return "UPCOMING";
+    if (currentTime <= classEnd) return "ONGOING";
+    return "ENDED";
+};
+
+const toDateKey = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+};
+
+const toSafeEmail = (email: string | null | undefined) =>
+    email?.trim().toLowerCase() || null;
 
 const toEnrollmentStatusLabel = (status: BatchStatusValue) => {
     if (status === BatchStatus.ONGOING) return "Active";
@@ -389,7 +444,7 @@ const getDashboardOverview = async () => {
 
     return {
         pageHeader: {
-            title: "LMS System Overview",
+            title: "Nexaali Academy System Overview",
             subtitle: "Complete analytics, attendance & course tracking",
             generatedAt: now.toISOString(),
         },
@@ -421,6 +476,412 @@ const getDashboardOverview = async () => {
     };
 };
 
+const getClassAttendanceOverview = async () => {
+    const now = new Date();
+    const { start: todayStart, end: todayEnd } = getTodayRange(now);
+
+    const allClasses = await prisma.batchClass.findMany({
+        select: {
+            id: true,
+            batchId: true,
+            instructorId: true,
+            title: true,
+            startTime: true,
+            duration: true,
+            zoomMeetingId: true,
+        },
+        orderBy: { startTime: "desc" },
+    });
+
+    const classSummary = {
+        totalClasses: allClasses.length,
+        upcomingClasses: 0,
+        ongoingClasses: 0,
+        endedClasses: 0,
+        todayClasses: 0,
+        startedTodayClasses: 0,
+        upcomingTodayClasses: 0,
+        conductedClasses: 0,
+    };
+
+    const startedClasses: typeof allClasses = [];
+    const todayClasses: typeof allClasses = [];
+
+    for (const batchClass of allClasses) {
+        const timelineStatus = getClassTimelineStatus(
+            batchClass.startTime,
+            batchClass.duration,
+            now
+        );
+
+        if (timelineStatus === "UPCOMING") classSummary.upcomingClasses += 1;
+        else if (timelineStatus === "ONGOING") classSummary.ongoingClasses += 1;
+        else classSummary.endedClasses += 1;
+
+        const isToday =
+            batchClass.startTime >= todayStart && batchClass.startTime <= todayEnd;
+        if (isToday) {
+            classSummary.todayClasses += 1;
+            todayClasses.push(batchClass);
+
+            if (batchClass.startTime <= now) {
+                classSummary.startedTodayClasses += 1;
+            } else {
+                classSummary.upcomingTodayClasses += 1;
+            }
+        }
+
+        if (batchClass.startTime <= now) {
+            classSummary.conductedClasses += 1;
+            startedClasses.push(batchClass);
+        }
+    }
+
+    todayClasses.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+
+    const recentClassesForList = startedClasses.slice(0, 12);
+    const relevantBatchIds = Array.from(
+        new Set([...startedClasses, ...todayClasses].map((item) => item.batchId))
+    );
+    const startedClassIds = startedClasses.map((item) => item.id);
+    const instructorIds = Array.from(
+        new Set(
+            [...recentClassesForList, ...todayClasses].map((item) => item.instructorId)
+        )
+    );
+
+    const enrollmentsPromise = relevantBatchIds.length
+        ? prisma.enrollment.findMany({
+            where: { batchId: { in: relevantBatchIds } },
+            select: {
+                batchId: true,
+                userId: true,
+                user: {
+                    select: {
+                        email: true,
+                    },
+                },
+            },
+        })
+        : Promise.resolve([]);
+
+    const batchAttendancesPromise = startedClassIds.length
+        ? prisma.batchClassAttendance.findMany({
+            where: { batchClassId: { in: startedClassIds } },
+            select: {
+                batchClassId: true,
+                attendance: {
+                    select: {
+                        userId: true,
+                        email: true,
+                        joinTime: true,
+                        leaveTime: true,
+                        duration: true,
+                    },
+                },
+            },
+        })
+        : Promise.resolve([]);
+
+    const batchesPromise = relevantBatchIds.length
+        ? prisma.batch.findMany({
+            where: { id: { in: relevantBatchIds } },
+            select: {
+                id: true,
+                name: true,
+                slug: true,
+                course: {
+                    select: {
+                        title: true,
+                    },
+                },
+            },
+        })
+        : Promise.resolve([]);
+
+    const instructorsPromise = instructorIds.length
+        ? prisma.user.findMany({
+            where: { id: { in: instructorIds } },
+            select: {
+                id: true,
+                name: true,
+            },
+        })
+        : Promise.resolve([]);
+
+    const [enrollments, batchAttendances, batches, instructors] = await Promise.all([
+        enrollmentsPromise,
+        batchAttendancesPromise,
+        batchesPromise,
+        instructorsPromise,
+    ]);
+
+    const classById = new Map(allClasses.map((item) => [item.id, item]));
+
+    const enrollmentLookupByBatchId = new Map<string, EnrollmentLookup>();
+    for (const enrollment of enrollments) {
+        const existingLookup = enrollmentLookupByBatchId.get(enrollment.batchId) ?? {
+            studentIds: new Set<string>(),
+            emailToStudentId: new Map<string, string>(),
+        };
+
+        existingLookup.studentIds.add(enrollment.userId);
+
+        const emailKey = toSafeEmail(enrollment.user.email);
+        if (emailKey) {
+            existingLookup.emailToStudentId.set(emailKey, enrollment.userId);
+        }
+
+        enrollmentLookupByBatchId.set(enrollment.batchId, existingLookup);
+    }
+
+    const attendanceByClassId = new Map<string, ClassAttendanceAggregation>();
+    for (const record of batchAttendances) {
+        const batchClass = classById.get(record.batchClassId);
+        if (!batchClass) continue;
+
+        const enrollmentLookup = enrollmentLookupByBatchId.get(batchClass.batchId);
+        const existingAggregation = attendanceByClassId.get(record.batchClassId) ?? {
+            matchedStudentIds: new Set<string>(),
+            unknownParticipants: 0,
+            totalDurationSeconds: 0,
+            totalSessions: 0,
+        };
+
+        const durationSeconds = calculateDurationSeconds(
+            record.attendance.joinTime,
+            record.attendance.leaveTime,
+            record.attendance.duration
+        );
+
+        existingAggregation.totalDurationSeconds += durationSeconds;
+        existingAggregation.totalSessions += 1;
+
+        const directMatchedUserId =
+            record.attendance.userId &&
+                enrollmentLookup?.studentIds.has(record.attendance.userId)
+                ? record.attendance.userId
+                : null;
+
+        const emailMatchedUserId = (() => {
+            const emailKey = toSafeEmail(record.attendance.email);
+            if (!emailKey) return null;
+            return enrollmentLookup?.emailToStudentId.get(emailKey) ?? null;
+        })();
+
+        const matchedUserId = directMatchedUserId ?? emailMatchedUserId;
+
+        if (matchedUserId) {
+            existingAggregation.matchedStudentIds.add(matchedUserId);
+        } else {
+            existingAggregation.unknownParticipants += 1;
+        }
+
+        attendanceByClassId.set(record.batchClassId, existingAggregation);
+    }
+
+    const batchById = new Map(batches.map((batch) => [batch.id, batch]));
+    const instructorById = new Map(
+        instructors.map((instructor) => [instructor.id, instructor.name])
+    );
+
+    const buildClassMetrics = (classes: typeof allClasses) =>
+        classes.map((item) => {
+            const enrollmentLookup = enrollmentLookupByBatchId.get(item.batchId);
+            const attendanceAggregation = attendanceByClassId.get(item.id);
+            const batch = batchById.get(item.batchId);
+
+            const expectedStudents = enrollmentLookup?.studentIds.size ?? 0;
+            const presentStudents = attendanceAggregation?.matchedStudentIds.size ?? 0;
+            const absentStudents = Math.max(expectedStudents - presentStudents, 0);
+            const attendanceRate = expectedStudents
+                ? Number(((presentStudents / expectedStudents) * 100).toFixed(2))
+                : 0;
+
+            const totalDurationSeconds = attendanceAggregation?.totalDurationSeconds ?? 0;
+
+            return {
+                classId: item.id,
+                title: item.title,
+                startTime: item.startTime,
+                durationMinutes: item.duration,
+                status: getClassTimelineStatus(item.startTime, item.duration, now),
+                zoomMeetingId: item.zoomMeetingId,
+                batchId: item.batchId,
+                batchName: batch?.name ?? "Unknown Batch",
+                batchSlug: batch?.slug ?? "",
+                courseTitle: batch?.course.title ?? "Untitled Course",
+                instructorId: item.instructorId,
+                instructor: instructorById.get(item.instructorId) ?? "TBA",
+                expectedStudents,
+                presentStudents,
+                absentStudents,
+                attendanceRate,
+                sessionCount: attendanceAggregation?.totalSessions ?? 0,
+                unknownParticipants: attendanceAggregation?.unknownParticipants ?? 0,
+                totalDurationSeconds,
+                totalDurationMinutes: Number((totalDurationSeconds / 60).toFixed(2)),
+                time: formatTimeRange(item.startTime, item.duration),
+            };
+        });
+
+    const startedClassMetrics = buildClassMetrics(startedClasses);
+    const todayClassMetrics = buildClassMetrics(todayClasses);
+    const todayStartedClassMetrics = todayClassMetrics.filter(
+        (item) => item.startTime <= now
+    );
+
+    const aggregateAttendanceStats = (
+        metrics: Array<{
+            expectedStudents: number;
+            presentStudents: number;
+        }>
+    ) => {
+        const expectedStudents = metrics.reduce(
+            (sum, item) => sum + item.expectedStudents,
+            0
+        );
+        const presentStudents = metrics.reduce(
+            (sum, item) => sum + item.presentStudents,
+            0
+        );
+        const absentStudents = Math.max(expectedStudents - presentStudents, 0);
+        const attendanceRate = expectedStudents
+            ? Number(((presentStudents / expectedStudents) * 100).toFixed(2))
+            : 0;
+
+        return {
+            expectedStudents,
+            presentStudents,
+            absentStudents,
+            attendanceRate,
+        };
+    };
+
+    const overallAttendance = aggregateAttendanceStats(startedClassMetrics);
+    const todayAttendance = aggregateAttendanceStats(todayStartedClassMetrics);
+
+    const averageClassAttendanceRate = startedClassMetrics.length
+        ? Number(
+            (
+                startedClassMetrics.reduce(
+                    (sum, item) => sum + item.attendanceRate,
+                    0
+                ) / startedClassMetrics.length
+            ).toFixed(2)
+        )
+        : 0;
+
+    const classesWithAttendanceRecords = startedClassMetrics.filter(
+        (item) => item.sessionCount > 0
+    ).length;
+    const classesWithoutAttendanceRecords = Math.max(
+        startedClassMetrics.length - classesWithAttendanceRecords,
+        0
+    );
+
+    const last7DaysStart = new Date(todayStart);
+    last7DaysStart.setDate(last7DaysStart.getDate() - 6);
+
+    const dailyTrendMap = new Map<string, DailyAttendanceTrend>();
+    for (let i = 0; i < 7; i += 1) {
+        const date = new Date(last7DaysStart);
+        date.setDate(last7DaysStart.getDate() + i);
+        const dateKey = toDateKey(date);
+        dailyTrendMap.set(dateKey, {
+            date: dateKey,
+            totalClasses: 0,
+            expectedStudents: 0,
+            presentStudents: 0,
+        });
+    }
+
+    for (const metric of startedClassMetrics) {
+        const dateKey = toDateKey(metric.startTime);
+        const trend = dailyTrendMap.get(dateKey);
+        if (!trend) continue;
+
+        trend.totalClasses += 1;
+        trend.expectedStudents += metric.expectedStudents;
+        trend.presentStudents += metric.presentStudents;
+    }
+
+    const dailyTrendLast7Days = Array.from(dailyTrendMap.values()).map((item) => {
+        const absentStudents = Math.max(
+            item.expectedStudents - item.presentStudents,
+            0
+        );
+        const attendanceRate = item.expectedStudents
+            ? Number(((item.presentStudents / item.expectedStudents) * 100).toFixed(2))
+            : 0;
+
+        return {
+            ...item,
+            absentStudents,
+            attendanceRate,
+        };
+    });
+
+    return {
+        pageHeader: {
+            title: "Class & Attendance Full Overview",
+            subtitle: "Admin view of class execution and participation analytics",
+            generatedAt: now.toISOString(),
+        },
+        classSummary,
+        attendanceSummary: {
+            ...overallAttendance,
+            averageClassAttendanceRate,
+            classesWithAttendanceRecords,
+            classesWithoutAttendanceRecords,
+        },
+        todayAttendance: {
+            ...todayAttendance,
+            totalTodayClasses: classSummary.todayClasses,
+            startedTodayClasses: classSummary.startedTodayClasses,
+            upcomingTodayClasses: classSummary.upcomingTodayClasses,
+            classes: todayClassMetrics.map((item) => ({
+                classId: item.classId,
+                title: item.title,
+                course: item.courseTitle,
+                batchName: item.batchName,
+                instructor: item.instructor,
+                status: item.status,
+                startTime: item.startTime.toISOString(),
+                durationMinutes: item.durationMinutes,
+                time: item.time,
+                expectedStudents: item.expectedStudents,
+                presentStudents: item.presentStudents,
+                absentStudents: item.absentStudents,
+                attendanceRate: item.attendanceRate,
+                unknownParticipants: item.unknownParticipants,
+                zoomMeetingId: item.zoomMeetingId,
+            })),
+        },
+        recentClassAttendance: startedClassMetrics.slice(0, 12).map((item) => ({
+            classId: item.classId,
+            title: item.title,
+            course: item.courseTitle,
+            batchName: item.batchName,
+            batchSlug: item.batchSlug,
+            instructor: item.instructor,
+            status: item.status,
+            startTime: item.startTime.toISOString(),
+            durationMinutes: item.durationMinutes,
+            expectedStudents: item.expectedStudents,
+            presentStudents: item.presentStudents,
+            absentStudents: item.absentStudents,
+            attendanceRate: item.attendanceRate,
+            sessionCount: item.sessionCount,
+            unknownParticipants: item.unknownParticipants,
+            totalDurationMinutes: item.totalDurationMinutes,
+            zoomMeetingId: item.zoomMeetingId,
+        })),
+        dailyTrendLast7Days,
+    };
+};
+
 export const DashboardService = {
     getDashboardOverview,
+    getClassAttendanceOverview,
 };
